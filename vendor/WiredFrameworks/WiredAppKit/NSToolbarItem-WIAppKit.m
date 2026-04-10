@@ -54,8 +54,11 @@
 	}
 	else if([content isKindOfClass:[NSView class]]) {
 		[item setView:content];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 		[item setMinSize:[content frame].size];
 		[item setMaxSize:[content frame].size];
+#pragma clang diagnostic pop
 	}
 
 	return [item autorelease];

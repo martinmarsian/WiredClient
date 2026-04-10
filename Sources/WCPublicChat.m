@@ -70,6 +70,7 @@ typedef enum _WCChatActivity				WCChatActivity;
 
 @interface WCPublicChat(Private)
 
+- (NSToolbarItem *)_toolbarItemWithIdentifier:(NSString *)identifier;
 - (void)_updateToolbarForConnection:(WCServerConnection *)connection;
 - (void)_updateBannerToolbarItem:(NSToolbarItem *)item forConnection:(WCServerConnection *)connection;
 - (void)_updateTabViewItemForConnection:(WCServerConnection *)connection;
@@ -98,54 +99,67 @@ typedef enum _WCChatActivity				WCChatActivity;
 
 @implementation WCPublicChat(Private)
 
+- (NSToolbarItem *)_toolbarItemWithIdentifier:(NSString *)identifier {
+    NSToolbar *toolbar = [[self window] toolbar];
+    for(NSToolbarItem *item in [toolbar items]) {
+        if([[item itemIdentifier] isEqualToString:identifier])
+            return item;
+        if([item isKindOfClass:[NSToolbarItemGroup class]]) {
+            for(NSToolbarItem *subitem in [(NSToolbarItemGroup *)item subitems]) {
+                if([[subitem itemIdentifier] isEqualToString:identifier])
+                    return subitem;
+            }
+        }
+    }
+    return nil;
+}
+
+
+
 - (void)_updateToolbarForConnection:(WCServerConnection *)connection {
 	NSToolbarItem       *item;
-    
-	item = [[[self window] toolbar] itemWithIdentifier:@"Banner"];
-	
+
+	item = [self _toolbarItemWithIdentifier:@"Banner"];
+
 	[item setEnabled:(connection != NULL)];
-    
+
 	if(connection == [[self selectedChatController] connection]) {
-		item = [[[self window] toolbar] itemWithIdentifier:@"Banner"];
-        
+		item = [self _toolbarItemWithIdentifier:@"Banner"];
+
 		[self _updateBannerToolbarItem:item forConnection:connection];
 	}
-	
-	item = [[[self window] toolbar] itemWithIdentifier:@"Messages"];
-	
+
+	item = [self _toolbarItemWithIdentifier:@"Messages"];
+
 	[item setImage:[[NSImage imageNamed:@"Messages"] badgedImageWithInt:[[WCMessages messages] numberOfUnreadMessages]]];
-    
-	item = [[[self window] toolbar] itemWithIdentifier:@"Boards"];
-    
+
+	item = [self _toolbarItemWithIdentifier:@"Boards"];
+
 	[item setImage:[[NSImage imageNamed:@"Boards"] badgedImageWithInt:[[WCBoards boards] numberOfUnreadThreads]]];
-    
-    item = [[[self window] toolbar] itemWithIdentifier:@"Transfers"];
-    
+
+    item = [self _toolbarItemWithIdentifier:@"Transfers"];
+
     [item setImage:[[NSImage imageNamed:@"Transfers"] badgedImageWithInt:[[WCTransfers transfers] numberOfUncompleteTransfers]]];
-    
+
 }
 
 
 
 - (void)_updateBannerToolbarItem:(NSToolbarItem *)item forConnection:(WCServerConnection *)connection {
-	NSImage		*image;
-    
-	if(connection) {
-		[item setLabel:[connection name]];
-		[item setPaletteLabel:[connection name]];
-		[item setToolTip:[connection name]];
-	} else {
-		[item setLabel:NSLS(@"Banner", @"Banner toolbar item")];
-		[item setPaletteLabel:NSLS(@"Banner", @"Banner toolbar item")];
-		[item setToolTip:NSLS(@"Banner", @"Banner toolbar item")];
-	}
-	
-	image = [[connection server] banner];
-	
-	if(image)
-		[(NSButton *) [item view] setImage:image];
-	else
-		[(NSButton *) [item view] setImage:[NSImage imageNamed:@"Banner"]];
+    NSButton    *button;
+    NSImage     *image;
+
+    button = (NSButton *)[item view];
+    image  = [[connection server] banner];
+    [button setImage:image ? image : [NSImage imageNamed:@"Banner"]];
+
+    if(connection) {
+        [item setLabel:[connection name]];
+        [item setToolTip:[connection name]];
+    } else {
+        [item setLabel:@""];
+        [item setToolTip:NSLS(@"Banner", @"Banner toolbar item")];
+    }
 }
 
 
@@ -555,15 +569,23 @@ typedef enum _WCChatActivity				WCChatActivity;
 	
     _errorQueue = [[WCErrorQueue alloc] initWithWindow:[self window]];
     
-	toolbar = [[NSToolbar alloc] initWithIdentifier:@"PublicChat"];
+	toolbar = [[NSToolbar alloc] initWithIdentifier:@"WCPublicChat"];
 	[toolbar setDelegate:self];
 	[toolbar setAllowsUserCustomization:YES];
-	[toolbar setAutosavesConfiguration:YES];
+	[toolbar setAutosavesConfiguration:NO];
 	[toolbar setShowsBaselineSeparator:NO];
 
 	[[self window] setToolbar:toolbar];
 	[toolbar release];
-	
+
+	// Ensure window is wide enough to show all toolbar items without overflow
+	[[self window] setMinSize:NSMakeSize(900.0, 300.0)];
+	if([[self window] frame].size.width < 900.0) {
+		NSRect frame = [[self window] frame];
+		frame.size.width = 900.0;
+		[[self window] setFrame:frame display:NO];
+	}
+
 	[self setShouldCascadeWindows:NO];
 	[self setWindowFrameAutosaveName:@"PublicChat"];
     
@@ -626,17 +648,19 @@ typedef enum _WCChatActivity				WCChatActivity;
 	NSButton		*button;
 
 	if([identifier isEqualToString:@"Banner"]) {
-		button = [[[NSButton alloc] initWithFrame:NSMakeRect(0.0, 0.0, 200.0, 32.0)] autorelease];
-		[button setBordered:NO];
-		[button setImage:[NSImage imageNamed:@"Banner"]];
-        [[button cell] setImageScaling:NSImageScaleProportionallyUpOrDown];
-		[button setButtonType:NSMomentaryChangeButton];
-		
-		return [NSToolbarItem toolbarItemWithIdentifier:identifier
-												   name:NSLS(@"Banner", @"Banner toolbar item")
-												content:button
-												 target:self
-												 action:@selector(serverInfo:)];
+        NSButton *button = [[[NSButton alloc] initWithFrame:NSMakeRect(0, 0, 180, 34)] autorelease];
+        [button setButtonType:NSButtonTypeMomentaryChange];
+        [button setBordered:NO];
+        [button setImage:[NSImage imageNamed:@"Banner"]];
+        [button setImageScaling:NSImageScaleProportionallyUpOrDown];
+        [button setImagePosition:NSImageOnly];
+        NSToolbarItem *item = [NSToolbarItem toolbarItemWithIdentifier:identifier
+                                                                  name:NSLS(@"Banner", @"Banner toolbar item")
+                                                               content:button
+                                                                target:self
+                                                                action:@selector(serverInfo:)];
+        [item setLabel:@""];
+        return item;
 	}
 	else if([identifier isEqualToString:@"Boards"]) {
 		return [NSToolbarItem toolbarItemWithIdentifier:identifier
@@ -731,7 +755,7 @@ typedef enum _WCChatActivity				WCChatActivity;
 	}
 	else if([identifier isEqualToString:@"Reconnect"]) {
 		return [NSToolbarItem toolbarItemWithIdentifier:identifier
-												   name:NSLS(@"Reconnect", @"Disconnect toolbar item")
+												   name:NSLS(@"Reconnect", @"Reconnect toolbar item")
 												content:[NSImage imageNamed:@"Reconnect"]
 												 target:self
 												 action:@selector(reconnect:)];
@@ -750,7 +774,6 @@ typedef enum _WCChatActivity				WCChatActivity;
 												 target:self
 												 action:@selector(switchViews:)];
 	}
-	
 	return NULL;
 }
 
@@ -758,18 +781,15 @@ typedef enum _WCChatActivity				WCChatActivity;
 
 - (NSArray *)toolbarDefaultItemIdentifiers:(NSToolbar *)toolbar {
 	return [NSArray arrayWithObjects:
-            @"Views",
-            NSToolbarFlexibleSpaceItemIdentifier,
             @"Banner",
-            NSToolbarSpaceItemIdentifier,
             @"Boards",
             @"Messages",
             @"Files",
             @"Transfers",
             @"Settings",
-            NSToolbarFlexibleSpaceItemIdentifier,
             @"Reconnect",
             @"Disconnect",
+            NSToolbarFlexibleSpaceItemIdentifier,
             NULL];
 }
 
@@ -778,6 +798,7 @@ typedef enum _WCChatActivity				WCChatActivity;
 - (NSArray *)toolbarAllowedItemIdentifiers:(NSToolbar *)toolbar {
 	return [NSArray arrayWithObjects:
             @"Banner",
+            @"ActionGroup",
             @"Boards",
             @"Messages",
             @"Files",
@@ -794,7 +815,6 @@ typedef enum _WCChatActivity				WCChatActivity;
             @"Views",
             @"Reconnect",
             @"Disconnect",
-            NSToolbarSeparatorItemIdentifier,
             NSToolbarSpaceItemIdentifier,
             NSToolbarFlexibleSpaceItemIdentifier,
             NSToolbarCustomizeToolbarItemIdentifier,
@@ -803,15 +823,18 @@ typedef enum _WCChatActivity				WCChatActivity;
 
 
 
-//- (NSArray *)toolbarSelectableItemIdentifiers:(NSToolbar *)toolbar {
-//    return [NSArray arrayWithObjects:
-//            @"Chat",
-//            @"Boards",
-//            @"Messages",
-//            @"Files",
-//            @"Transfers",
-//            NULL];
-//}
+- (NSArray *)toolbarSelectableItemIdentifiers:(NSToolbar *)toolbar {
+    return [NSArray arrayWithObjects:
+            @"Banner",
+            @"Boards",
+            @"Messages",
+            @"Files",
+            @"Transfers",
+            @"Settings",
+            @"Reconnect",
+            @"Disconnect",
+            NULL];
+}
 
 
 
