@@ -78,7 +78,21 @@
     NSNumber        *encryptionCipher;
     
     [self _reloadCiphers];
-    
+
+    // Cipher selection is no longer user-configurable (always AES-256/SHA-256).
+    // Hide the popup and its accompanying label.
+    [_bookmarksCipherPopUpButton setHidden:YES];
+    NSView *superview = [_bookmarksCipherPopUpButton superview];
+    CGFloat buttonMidY = NSMidY([_bookmarksCipherPopUpButton frame]);
+    for(NSView *view in [superview subviews]) {
+        if([view isKindOfClass:[NSTextField class]] &&
+           ![(NSTextField *)view isEditable] &&
+           fabs(NSMidY([view frame]) - buttonMidY) < 6.0) {
+            [view setHidden:YES];
+            break;
+        }
+    }
+
     if(_bookmark) {
         [_bookmarksNameTextField setStringValue:[_bookmark objectForKey:WCBookmarksName]];
         [_bookmarksAddressTextField setStringValue:[_bookmark objectForKey:WCBookmarksAddress]];
