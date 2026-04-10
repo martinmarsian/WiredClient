@@ -140,8 +140,8 @@
             options |= WIP7CompressionDeflate;
 
     // Always use the strongest available cipher and checksum.
-    options |= WIP7EncryptionRSA_AES256_SHA512;
-    options |= WIP7ChecksumSHA512;
+    options |= WIP7EncryptionRSA_AES256_SHA256;
+    options |= WIP7ChecksumSHA256;
 
     return options;
 }
