@@ -145,24 +145,27 @@
     
     if(cipherTag != -1) {
         switch (cipherTag) {
-            case 0:  options = options | WIP7EncryptionRSA_AES128_SHA1; break;
-            case 1:  options = options | WIP7EncryptionRSA_AES192_SHA1;  break;
-            case 2:  options = options | WIP7EncryptionRSA_AES256_SHA1; break;
-            case 3:  options = options | WIP7EncryptionRSA_BF128_SHA1; break;
-            case 4:  options = options | WIP7EncryptionRSA_3DES192_SHA1; break;
+            case 0:  options = options | WIP7EncryptionRSA_AES128_SHA1;   break;
+            case 1:  options = options | WIP7EncryptionRSA_AES192_SHA1;   break;
+            case 2:  options = options | WIP7EncryptionRSA_AES256_SHA1;   break;
+            case 3:  /* BF128/SHA1 deprecated -> AES256/SHA256 */
+            case 4:  /* 3DES192/SHA1 deprecated -> AES256/SHA256 */
             case 5:  options = options | WIP7EncryptionRSA_AES128_SHA256; break;
-            case 6:  options = options | WIP7EncryptionRSA_AES192_SHA256;  break;
+            case 6:  options = options | WIP7EncryptionRSA_AES192_SHA256; break;
             case 7:  options = options | WIP7EncryptionRSA_AES256_SHA256; break;
-            case 8:  options = options | WIP7EncryptionRSA_BF128_SHA256; break;
-            case 9:  options = options | WIP7EncryptionRSA_3DES192_SHA256; break;
+            case 8:  /* BF128/SHA256 deprecated -> AES256/SHA256 */
+            case 9:  /* 3DES192/SHA256 deprecated -> AES256/SHA256 */
+                     options = options | WIP7EncryptionRSA_AES256_SHA256; break;
             case 10: options = options | WIP7EncryptionRSA_AES128_SHA512; break;
-            case 11: options = options | WIP7EncryptionRSA_AES192_SHA512;  break;
+            case 11: options = options | WIP7EncryptionRSA_AES192_SHA512; break;
             case 12: options = options | WIP7EncryptionRSA_AES256_SHA512; break;
-            case 13: options = options | WIP7EncryptionRSA_BF128_SHA512; break;
-            case 14: options = options | WIP7EncryptionRSA_3DES192_SHA512; break;
+            case 13: /* BF128/SHA512 deprecated -> AES256/SHA512 */
+            case 14: /* 3DES192/SHA512 deprecated -> AES256/SHA512 */
+                     options = options | WIP7EncryptionRSA_AES256_SHA512; break;
+            default: options = options | WIP7EncryptionRSA_AES256_SHA256; break;
         }
     } else {
-       options = options | WIP7EncryptionRSA_AES256_SHA1;
+        options = options | WIP7EncryptionRSA_AES256_SHA256;
     }
 
     if      (options | WIP7EncryptionRSA_AES128_SHA1 ||

@@ -55,12 +55,14 @@
         
     for(NSNumber *key in schemeKeys) {
         options = 1 << ([key unsignedLongLongValue] + 1);
-        
+
+        deprecated = WI_P7_DEPRECATED_ENCRYPTION_CIPHER(options);
+        if(deprecated)
+            continue;
+
         cipherName  = [WCP7Spec nameForEncryptionSchemeID:[key stringValue]];
-        deprecated  = WI_P7_DEPRECATED_ENCRYPTION_CIPHER(options);
-        menuName    = [NSSWF:@"%@%@", cipherName, (deprecated ? @" (deprecated)": @"")];
-        item        = [NSMenuItem itemWithTitle:menuName tag:[key intValue]];
-        
+        item        = [NSMenuItem itemWithTitle:cipherName tag:[key intValue]];
+
         [[_bookmarksCipherPopUpButton menu] addItem:item];
     }
 }
