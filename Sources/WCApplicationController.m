@@ -52,21 +52,7 @@
 #import "WCUser.h"
 
 
-#define WCGrowlServerConnected										@"Connected to server"
-#define WCGrowlServerDisconnected									@"Disconnected from server"
-#define WCGrowlError												@"Error"
-#define WCGrowlUserJoined											@"User joined"
-#define WCGrowlUserChangedNick										@"User changed nick"
-#define WCGrowlUserChangedStatus									@"User changed status"
-#define WCGrowlUserLeft												@"User left"
-#define WCGrowlChatReceived											@"Chat received"
-#define WCGrowlHighlightedChatReceived								@"Highlighted chat received"
-#define WCGrowlChatInvitationReceived								@"Private chat invitation received"
-#define WCGrowlMessageReceived										@"Message received"
-#define WCGrowlBoardPostReceived									@"Board post added"
-#define WCGrowlBroadcastReceived									@"Broadcast received"
-#define WCGrowlTransferStarted										@"Transfer started"
-#define WCGrowlTransferFinished										@"Transfer finished"
+#import <UserNotifications/UserNotifications.h>
 
 
 NSString * const WCDateDidChangeNotification						= @"WCDateDidChangeNotification";
@@ -104,8 +90,8 @@ static NSArray *_systemSounds;
 - (BOOL)_openConnectionWithURL:(WIURL *)url;
 
 - (void)_userNotificationWithNotification:(NSNotification *)notification;
-- (void)_handleGrowlNotificationWithUserInfo:(NSDictionary *)userInfo;
-- (void)_handleUserNotification:(NSUserNotification *)userNotification;
+- (void)_handleNotificationUserInfo:(NSDictionary *)userInfo;
+- (void)_handleReplyResponse:(UNNotificationResponse *)response;
 
 @end
 
@@ -120,7 +106,7 @@ static NSArray *_systemSounds;
 	else
 		[_disconnectMenuItem setTitle:NSLS(@"Disconnect", @"Disconnect menu item")];
 	
-	[_updater setAutomaticallyChecksForUpdates:[[WCSettings settings] boolForKey:WCCheckForUpdate]];
+	[_updaterController.updater setAutomaticallyChecksForUpdates:[[WCSettings settings] boolForKey:WCCheckForUpdate]];
 }
 
 
@@ -316,135 +302,127 @@ static NSArray *_systemSounds;
 #pragma mark -
 
 - (void)_userNotificationWithNotification:(NSNotification *)notification {
-    NSUserNotificationCenter    *center;
-    NSUserNotification          *note;
-    NSDictionary                *event, *userInfo;
-    WCServerConnection          *connection;
-    id                          info1, info2;
-    
-    center      = [NSUserNotificationCenter defaultUserNotificationCenter];
-    [center setDelegate:self];
-    
-    event		= [notification object];
-	connection	= [[notification userInfo] objectForKey:WCServerConnectionEventConnectionKey];
-	info1		= [[notification userInfo] objectForKey:WCServerConnectionEventInfo1Key];
-	info2		= [[notification userInfo] objectForKey:WCServerConnectionEventInfo2Key];
-    
+    NSDictionary                    *event, *userInfo;
+    WCServerConnection              *connection;
+    id                              info1, info2;
+    UNMutableNotificationContent    *content;
+    UNNotificationRequest           *request;
+
+    event      = [notification object];
+    connection = [[notification userInfo] objectForKey:WCServerConnectionEventConnectionKey];
+    info1      = [[notification userInfo] objectForKey:WCServerConnectionEventInfo1Key];
+    info2      = [[notification userInfo] objectForKey:WCServerConnectionEventInfo2Key];
+
     if(![event boolForKey:WCEventsNotificationCenter])
         return;
-    
-    note        = [[NSUserNotification alloc] init];
-    
-    if([info2 isKindOfClass:[WCUser class]]) {
-        userInfo = @{ @"event":             event,
-                      @"identifier":        [connection identifier],
-                      @"userID":            [NSNumber numberWithInteger:[(WCUser *)info2 userID]] };
-    }
-    else {
-        userInfo = @{ @"event":             event,
-                      @"identifier":        [connection identifier] };
-    }
-    
-    [note setUserInfo:userInfo];
-    
-    switch([event intForKey:WCEventsEvent]) {
-		case WCEventsServerConnected:
-            [note setTitle:NSLS(@"Connected", @"Growl event connected title")];
-            [note setInformativeText:[NSSWF:NSLS(@"Connected to %@", @"Growl event connected description (server)"), [connection name]]];
-			break;
-            
-		case WCEventsServerDisconnected:
-            [note setTitle:NSLS(@"Disconnected", @"Growl event disconnected title")];
-            [note setInformativeText:[NSSWF:NSLS(@"Disconnected from %@", @"Growl event disconnected description (server)"), [connection name]]];
-			break;
-            
-		case WCEventsError:
-            [note setTitle:[info1 localizedDescription]];
-            [note setInformativeText:[info1 localizedFailureReason]];
-			break;
-            
-		case WCEventsUserJoined:
-            [note setTitle:NSLS(@"User joined", @"Growl event user joined title")];
-            [note setInformativeText:[info1 nick]];
-			break;
-            
-		case WCEventsUserChangedNick:
-            [note setTitle:NSLS(@"User changed nick", @"Growl event user changed nick title")];
-            [note setInformativeText:[NSSWF:NSLS(@"%@ is now known as %@", @"Growl event user changed nick description (oldnick, newnick)"), [info1 nick], info2]];
-			break;
-            
-		case WCEventsUserChangedStatus:
-            [note setTitle:NSLS(@"User changed status", @"Growl event user changed status title")];
-            [note setInformativeText:[NSSWF:NSLS(@"%@ changed status to %@", @"Growl event user changed status description (nick, status)"), [info1 nick], info2]];
-			break;
-            
-		case WCEventsUserLeft:
-            [note setTitle:NSLS(@"User left", @"Growl event user left title")];
-            [note setInformativeText:[info1 nick]];
-			break;
-            
-		case WCEventsChatReceived:
-            note.hasReplyButton = YES;
-            
-            [note setTitle:NSLS(@"Chat received", @"Growl event chat received title")];
-            [note setInformativeText:[NSSWF:@"%@: %@", [info1 nick], info2]];
-			break;
-            
-		case WCEventsHighlightedChatReceived:
-            [note setTitle:NSLS(@"Chat received", @"Growl event chat received title")];
-            [note setInformativeText:[NSSWF:@"%@: %@", [info1 nick], info2]];            
-			break;
-            
-		case WCEventsChatInvitationReceived:
-            [note setTitle:NSLS(@"Private chat invitation received", @"Growl event private chat invitation received title")];
-            [note setInformativeText:[info1 nick]];
-			break;
-            
-		case WCEventsMessageReceived:
-            note.hasReplyButton = YES;
-            [note setTitle:NSLS(@"Message received", @"Growl event message received title")];
-            [note setInformativeText:[NSSWF:@"%@: %@", [info1 nick], [info1 valueForKey:@"messageString"]]];
-			break;
-            
-		case WCEventsBoardPostReceived:
-            [note setTitle:NSLS(@"Board post received", @"Growl event news posted title")];
-            [note setInformativeText:[NSSWF:@"%@: %@", info1, info2]];
-			break;
-            
-		case WCEventsBroadcastReceived:
-            [note setTitle:NSLS(@"Broadcast received", @"Growl event broadcast received title")];
-            [note setInformativeText:[NSSWF:@"%@: %@", [info1 nick], [info1 message]]];
-			break;
-            
-		case WCEventsTransferStarted:
-            [note setTitle:NSLS(@"Transfer started", @"Growl event transfer started title")];
-            [note setInformativeText:[info1 name]];
-			break;
-            
-		case WCEventsTransferFinished:
-            [note setTitle:NSLS(@"Transfer finished", @"Growl event transfer started title")];
-            [note setInformativeText:[info1 name]];
-			break;
-	}
 
-    [center deliverNotification:note];
-    [note release];
+    if([info2 isKindOfClass:[WCUser class]]) {
+        userInfo = @{ @"event":      event,
+                      @"identifier": [connection identifier],
+                      @"userID":     [NSNumber numberWithInteger:[(WCUser *)info2 userID]] };
+    } else {
+        userInfo = @{ @"event":      event,
+                      @"identifier": [connection identifier] };
+    }
+
+    content          = [[UNMutableNotificationContent alloc] init];
+    content.userInfo = userInfo;
+
+    switch([event intForKey:WCEventsEvent]) {
+        case WCEventsServerConnected:
+            content.title = NSLS(@"Connected", @"Notification connected title");
+            content.body  = [NSSWF:NSLS(@"Connected to %@", @"Notification connected description (server)"), [connection name]];
+            break;
+
+        case WCEventsServerDisconnected:
+            content.title = NSLS(@"Disconnected", @"Notification disconnected title");
+            content.body  = [NSSWF:NSLS(@"Disconnected from %@", @"Notification disconnected description (server)"), [connection name]];
+            break;
+
+        case WCEventsError:
+            content.title = [info1 localizedDescription];
+            content.body  = [info1 localizedFailureReason];
+            break;
+
+        case WCEventsUserJoined:
+            content.title = NSLS(@"User joined", @"Notification user joined title");
+            content.body  = [info1 nick];
+            break;
+
+        case WCEventsUserChangedNick:
+            content.title = NSLS(@"User changed nick", @"Notification user changed nick title");
+            content.body  = [NSSWF:NSLS(@"%@ is now known as %@", @"Notification user changed nick description (oldnick, newnick)"), [info1 nick], info2];
+            break;
+
+        case WCEventsUserChangedStatus:
+            content.title = NSLS(@"User changed status", @"Notification user changed status title");
+            content.body  = [NSSWF:NSLS(@"%@ changed status to %@", @"Notification user changed status description (nick, status)"), [info1 nick], info2];
+            break;
+
+        case WCEventsUserLeft:
+            content.title = NSLS(@"User left", @"Notification user left title");
+            content.body  = [info1 nick];
+            break;
+
+        case WCEventsChatReceived:
+        case WCEventsHighlightedChatReceived:
+            content.title = NSLS(@"Chat received", @"Notification chat received title");
+            content.body  = [NSSWF:@"%@: %@", [info1 nick], info2];
+            break;
+
+        case WCEventsChatInvitationReceived:
+            content.title = NSLS(@"Private chat invitation received", @"Notification private chat invitation title");
+            content.body  = [info1 nick];
+            break;
+
+        case WCEventsMessageReceived:
+            content.title = NSLS(@"Message received", @"Notification message received title");
+            content.body  = [NSSWF:@"%@: %@", [info1 nick], [info1 valueForKey:@"messageString"]];
+            break;
+
+        case WCEventsBoardPostReceived:
+            content.title = NSLS(@"Board post received", @"Notification board post received title");
+            content.body  = [NSSWF:@"%@: %@", info1, info2];
+            break;
+
+        case WCEventsBroadcastReceived:
+            content.title = NSLS(@"Broadcast received", @"Notification broadcast received title");
+            content.body  = [NSSWF:@"%@: %@", [info1 nick], [info1 message]];
+            break;
+
+        case WCEventsTransferStarted:
+            content.title = NSLS(@"Transfer started", @"Notification transfer started title");
+            content.body  = [info1 name];
+            break;
+
+        case WCEventsTransferFinished:
+            content.title = NSLS(@"Transfer finished", @"Notification transfer finished title");
+            content.body  = [info1 name];
+            break;
+    }
+
+    request = [UNNotificationRequest requestWithIdentifier:[[NSUUID UUID] UUIDString]
+                                                   content:content
+                                                   trigger:nil];
+    [[UNUserNotificationCenter currentNotificationCenter] addNotificationRequest:request
+                                                           withCompletionHandler:nil];
+    [content release];
 }
 
 
-- (void)_handleGrowlNotificationWithUserInfo:(NSDictionary *)userInfo {
+- (void)_handleNotificationUserInfo:(NSDictionary *)userInfo {
     NSDictionary            *event;
 	NSEnumerator			*enumerator;
 	WCPublicChatController	*chatController;
-	
+
 	[NSApp activateIgnoringOtherApps:YES];
-	
+
 	enumerator  = [[[WCPublicChat publicChat] chatControllers] objectEnumerator];
-	
+
 	while((chatController = [enumerator nextObject])) {
 		if([[userInfo valueForKey:@"identifier"] isEqualToString:[[chatController connection] identifier]]) {
             event = [userInfo valueForKey:@"event"];
-            
+
             if([event intForKey:WCEventsEvent] == WCEventsServerConnected ||
                [event intForKey:WCEventsEvent] == WCEventsServerDisconnected ||
                [event intForKey:WCEventsEvent] == WCEventsError ||
@@ -455,25 +433,24 @@ static NSArray *_systemSounds;
                [event intForKey:WCEventsEvent] == WCEventsChatReceived ||
                [event intForKey:WCEventsEvent] == WCEventsHighlightedChatReceived ||
                [event intForKey:WCEventsEvent] == WCEventsChatInvitationReceived) {
-                
+
                 [[WCPublicChat publicChat] selectChatController:chatController];
                 [[WCPublicChat publicChat] showWindow:self];
             }
             else if([event intForKey:WCEventsEvent] == WCEventsMessageReceived) {
                 WCUser *user = [userInfo objectForKey:WCServerConnectionEventInfo1Key];
-                
+
                 [[WCMessages messages] showWindow:self];
-                
+
                 if(user)
                     [[WCMessages messages] showPrivateMessageToUser:user];
-                
+
             } else if ([event intForKey:WCEventsEvent] == WCEventsBroadcastReceived) {
                 [[WCMessages messages] showWindow:self];
                 [[WCMessages messages] showBroadcastForConnection:[chatController connection]];
             }
             else if([event intForKey:WCEventsEvent] == WCEventsBoardPostReceived) {
                 [[WCBoards boards] showWindow:self];
-                
             }
             else if([event intForKey:WCEventsEvent] == WCEventsTransferStarted ||
                     [event intForKey:WCEventsEvent] == WCEventsTransferFinished) {
@@ -488,31 +465,31 @@ static NSArray *_systemSounds;
 }
 
 
-- (void)_handleUserNotification:(NSUserNotification *)userNotification {
+- (void)_handleReplyResponse:(UNNotificationResponse *)response {
     NSDictionary            *userInfo, *event;
 	NSEnumerator			*enumerator;
     NSString                *string;
     NSInteger               userID;
 	WCPublicChatController	*chatController;
     WCUser                  *user;
-	
+
 	[NSApp activateIgnoringOtherApps:NO];
-	
-    userInfo    = [userNotification userInfo];
-	enumerator  = [[[WCPublicChat publicChat] chatControllers] objectEnumerator];
-	
+
+    userInfo   = response.notification.request.content.userInfo;
+    string     = [(UNTextInputNotificationResponse *)response userText];
+	enumerator = [[[WCPublicChat publicChat] chatControllers] objectEnumerator];
+
 	while((chatController = [enumerator nextObject])) {
 		if([[userInfo valueForKey:@"identifier"] isEqualToString:[[chatController connection] identifier]]) {
-            event   = [userInfo valueForKey:@"event"];
-            string = [[userNotification response] string];
-            
+            event = [userInfo valueForKey:@"event"];
+
             if([event intForKey:WCEventsEvent] == WCEventsChatReceived) {
                 [chatController sendChat:string];
             }
             else if([event intForKey:WCEventsEvent] == WCEventsMessageReceived) {
-                userID  = [userInfo integerForKey:@"userID"];
-                user    = [chatController userWithUserID:userID];
-                
+                userID = [userInfo integerForKey:@"userID"];
+                user   = [chatController userWithUserID:userID];
+
                 if(user)
                     [[WCMessages messages] sendMessage:string toUser:user];
             }
@@ -647,6 +624,11 @@ static WCApplicationController		*sharedController;
     [[WCSettings settings] setObject:[theme objectForKey:WCThemesIdentifier] forKey:WCTheme];
     [[NSNotificationCenter defaultCenter] postNotificationName:WCThemeDidChangeNotification object:theme];
 	
+    UNUserNotificationCenter *unCenter = [UNUserNotificationCenter currentNotificationCenter];
+    [unCenter setDelegate:self];
+    [unCenter requestAuthorizationWithOptions:(UNAuthorizationOptionAlert | UNAuthorizationOptionSound | UNAuthorizationOptionBadge)
+                            completionHandler:^(BOOL granted, NSError *error) {}];
+
 	[[NSAppleEventManager sharedAppleEventManager]
 		setEventHandler:self
 			andSelector:@selector(handleAppleEvent:withReplyEvent:)
@@ -702,15 +684,20 @@ static WCApplicationController		*sharedController;
 	[NSNumberFormatter setDefaultFormatterBehavior:NSNumberFormatterBehavior10_4];
 
     
+    // Initialize Sparkle updater
+    _updaterController = [[SPUStandardUpdaterController alloc] initWithStartingUpdater:YES
+                                                                     updaterDelegate:self
+                                                                  userDriverDelegate:nil];
+
     // set the auto-update feed URL regarding to the selected configuration (Debug or Release)
 #ifdef WCConfigurationRelease
-    [_updater setFeedURL:[NSURL URLWithString:@"https://wired.read-write.fr/sparkle/wiredclient_cast.xml"]];
+    [_updaterController.updater setFeedURL:[NSURL URLWithString:@"https://wired.read-write.fr/sparkle/wiredclient_cast.xml"]];
 #else
-   [_updater setFeedURL:[NSURL URLWithString:@"https://wired.read-write.fr/sparkle/wiredclient_debugcast.xml"]];
+    [_updaterController.updater setFeedURL:[NSURL URLWithString:@"https://wired.read-write.fr/sparkle/wiredclient_debugcast.xml"]];
 #endif
-    
-     [_updater setSendsSystemProfile:YES];
-     [_updater performSelector:@selector(checkForUpdatesInBackground) afterDelay:5.0f];
+
+    [_updaterController.updater setSendsSystemProfile:YES];
+    [_updaterController.updater performSelector:@selector(checkForUpdatesInBackground) afterDelay:5.0f];
 
 	path = [[NSBundle mainBundle] pathForResource:@"wired" ofType:@"xml"];
 
@@ -929,9 +916,7 @@ static WCApplicationController		*sharedController;
     if([event boolForKey:WCEventsBounceInDock]){
         [[NSApplication sharedApplication] requestUserAttention:NSInformationalRequest];
     }
-    if ([NSUserNotification class] && [NSUserNotificationCenter class]) {
-        [self _userNotificationWithNotification:notification];
-    }
+    [self _userNotificationWithNotification:notification];
 }
 
 
@@ -1012,57 +997,17 @@ static WCApplicationController		*sharedController;
 
 #pragma mark -
 
-- (NSDictionary *)registrationDictionaryForGrowl {
-	return [NSDictionary dictionaryWithObjectsAndKeys:
-		[NSArray arrayWithObjects:
-			WCGrowlServerConnected,
-			WCGrowlServerDisconnected,
-			WCGrowlError,
-			WCGrowlUserJoined,
-			WCGrowlUserChangedNick,
-			WCGrowlUserChangedStatus,
-			WCGrowlUserLeft,
-			WCGrowlChatReceived,
-			WCGrowlHighlightedChatReceived,
-			WCGrowlChatInvitationReceived,
-			WCGrowlMessageReceived,
-			WCGrowlBroadcastReceived,
-			WCGrowlBoardPostReceived,
-			WCGrowlTransferStarted,
-			WCGrowlTransferFinished,
-			NULL],
-			"",
-		[NSArray arrayWithObjects:
-			WCGrowlServerDisconnected,
-			WCGrowlHighlightedChatReceived,
-			WCGrowlMessageReceived,
-			WCGrowlBroadcastReceived,
-			WCGrowlBoardPostReceived,
-			WCGrowlTransferFinished,
-			NULL],
-			"",
-		NULL];
-}
-
-
-
-- (void)growlNotificationWasClicked:(id)clickContext {
-    [self _handleGrowlNotificationWithUserInfo:clickContext];
-}
-
-
-
 
 
 #pragma mark -
 
-- (void)userNotificationCenter:(NSUserNotificationCenter *)center didActivateNotification:(NSUserNotification *)notification {
-    if(notification.activationType == NSUserNotificationActivationTypeReplied) {
-        [self _handleUserNotification:notification];
+- (void)userNotificationCenter:(UNUserNotificationCenter *)center
+    didReceiveNotificationResponse:(UNNotificationResponse *)response
+             withCompletionHandler:(void (^)(void))completionHandler {
+    if([response.actionIdentifier isEqualToString:UNNotificationDefaultActionIdentifier]) {
+        [self _handleNotificationUserInfo:response.notification.request.content.userInfo];
     }
-    else if(notification.activationType == NSUserNotificationActivationTypeContentsClicked) {
-        [self _handleGrowlNotificationWithUserInfo:[notification userInfo]];
-    }
+    completionHandler();
 }
 
 
@@ -1073,12 +1018,12 @@ static WCApplicationController		*sharedController;
 #pragma mark -
 
 
-- (BOOL)updaterShouldPromptForPermissionToCheckForUpdates:(SUUpdater *)updater {
+- (BOOL)updaterShouldPromptForPermissionToCheckForUpdates:(SPUUpdater *)updater {
 	return NO;
 }
 
 
-- (NSArray *)feedParametersForUpdater:(SUUpdater *)updater sendingSystemProfile:(BOOL)sendingProfile {
+- (NSArray *)feedParametersForUpdater:(SPUUpdater *)updater sendingSystemProfile:(BOOL)sendingProfile {
     NSMutableArray *params;
     
     params = [NSMutableArray array];
@@ -1184,7 +1129,7 @@ static WCApplicationController		*sharedController;
 #pragma mark -
 
 - (void)checkForUpdate {
-	[_updater checkForUpdates:self];
+	[_updaterController checkForUpdates:self];
 }
 
 

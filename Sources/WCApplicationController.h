@@ -27,6 +27,9 @@
  */
 
 
+#import <UserNotifications/UserNotifications.h>
+#import <Sparkle/Sparkle.h>
+
 #define WCApplicationSupportPath			@"~/Library/Application Support/Wired Client"
 
 extern NSString * const						WCDateDidChangeNotification;
@@ -34,7 +37,7 @@ extern NSString * const						WCExceptionHandlerReceivedBacktraceNotification;
 extern NSString * const						WCExceptionHandlerReceivedExceptionNotification;
 
 
-@interface WCApplicationController : WIObject <NSApplicationDelegate, NSUserNotificationCenterDelegate> {
+@interface WCApplicationController : WIObject <NSApplicationDelegate, UNUserNotificationCenterDelegate, SPUUpdaterDelegate> {
 	IBOutlet NSMenu							*_connectionMenu;
 	IBOutlet NSMenuItem						*_disconnectMenuItem;
 	IBOutlet NSMenuItem						*_newDocumentMenuItem;
@@ -47,7 +50,7 @@ extern NSString * const						WCExceptionHandlerReceivedExceptionNotification;
 	IBOutlet NSMenu							*_debugMenu;
 	IBOutlet NSMenu							*_windowMenu;
 	IBOutlet NSMenuItem						*_closeWindowMenuItem;
-	IBOutlet SUUpdater						*_updater;
+	SPUStandardUpdaterController			*_updaterController;
 	
 	NSString								*_clientVersion;
 	NSUInteger								_unread;

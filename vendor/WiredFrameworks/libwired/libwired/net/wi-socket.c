@@ -342,16 +342,27 @@ wi_boolean_t wi_socket_tls_set_dh(wi_socket_tls_t *tls, const unsigned char *p, 
 		return false;
 	}
 
-	tls->dh->p = BN_bin2bn(p, (int)p_size, NULL);
-	tls->dh->g = BN_bin2bn(g, (int)g_size, NULL);
+	{
+		BIGNUM *p_bn = BN_bin2bn(p, (int)p_size, NULL);
+		BIGNUM *g_bn = BN_bin2bn(g, (int)g_size, NULL);
 
-	if(!tls->dh->p || !tls->dh->g) {
-		wi_error_set_openssl_error();
+		if(!p_bn || !g_bn) {
+			BN_free(p_bn);
+			BN_free(g_bn);
+			wi_error_set_openssl_error();
+			DH_free(tls->dh);
+			tls->dh = NULL;
+			return false;
+		}
 
-		DH_free(tls->dh);
-		tls->dh = NULL;
-		
-		return false;
+		if(!DH_set0_pqg(tls->dh, p_bn, NULL, g_bn)) {
+			BN_free(p_bn);
+			BN_free(g_bn);
+			wi_error_set_openssl_error();
+			DH_free(tls->dh);
+			tls->dh = NULL;
+			return false;
+		}
 	}
 	
 	return true;
@@ -596,7 +607,7 @@ wi_string_t * wi_socket_certificate_name(wi_socket_t *socket) {
 	if(!pkey)
 		goto end;
 	
-	switch(EVP_PKEY_type(pkey->type)) {
+	switch(EVP_PKEY_base_id(pkey)) {
 		case EVP_PKEY_RSA:
 			string = wi_string_init_with_cstring(wi_string_alloc(), "RSA");
 			break;
