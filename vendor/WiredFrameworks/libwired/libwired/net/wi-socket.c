@@ -253,24 +253,25 @@ wi_socket_tls_t * wi_socket_tls_init_with_type(wi_socket_tls_t *tls, wi_socket_t
 	switch(type) {
 		default:
 		case WI_SOCKET_TLS_CLIENT:
-			method = (SSL_METHOD *)TLSv1_client_method();
+			method = (SSL_METHOD *)TLS_client_method();
 			break;
 
 		case WI_SOCKET_TLS_SERVER:
-			method = (SSL_METHOD *)TLSv1_server_method();
+			method = (SSL_METHOD *)TLS_server_method();
 			break;
 	}
-	
+
 	tls->ssl_ctx = SSL_CTX_new(method);
-	
+
 	if(!tls->ssl_ctx) {
 		wi_error_set_openssl_error();
-		
+
 		wi_release(NULL);
-		
+
 		return NULL;
 	}
-	
+
+	SSL_CTX_set_min_proto_version(tls->ssl_ctx, TLS1_2_VERSION);
 	SSL_CTX_set_mode(tls->ssl_ctx, SSL_MODE_AUTO_RETRY);
 	SSL_CTX_set_quiet_shutdown(tls->ssl_ctx, 1);
 	
