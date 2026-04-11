@@ -1202,7 +1202,19 @@ typedef enum _WCChatFormat					WCChatFormat;
 	[_topicDateFormatter setNaturalLanguageStyle:WIDateFormatterCapitalizedNaturalLanguageStyle];
 	
     [[_topicTextField cell] setBackgroundStyle:NSBackgroundStyleRaised];
-    
+
+    // Add a separator line at the bottom edge of the topic bar
+    {
+        NSView *topicContentView = [_topicTextField superview];
+        NSBox  *separator = [[[NSBox alloc] initWithFrame:NSZeroRect] autorelease];
+        [separator setBoxType:NSBoxSeparator];
+        [separator setTranslatesAutoresizingMaskIntoConstraints:NO];
+        [topicContentView addSubview:separator];
+        [[separator leadingAnchor]  constraintEqualToAnchor:[topicContentView leadingAnchor]].active  = YES;
+        [[separator trailingAnchor] constraintEqualToAnchor:[topicContentView trailingAnchor]].active = YES;
+        [[separator bottomAnchor]   constraintEqualToAnchor:[topicContentView bottomAnchor]].active   = YES;
+    }
+
     [_chatTableView registerForDraggedTypes:@[NSFilenamesPboardType, NSPasteboardTypeString]];
     [_chatTableView setDraggingDestinationFeedbackStyle:NSTableViewDraggingDestinationFeedbackStyleNone];
 	

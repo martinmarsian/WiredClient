@@ -1069,10 +1069,14 @@ NSString * const WCBoardsDidChangeUnreadCountNotification	= @"WCBoardsDidChangeU
 
 - (void)_reloadBoardListsSelectingBoard:(WCBoard *)board {
 	NSInteger		index;
-	
+
 	if(!board)
 		board = [_boardLocationPopUpButton representedObjectOfSelectedItem];
-	
+
+	// Retain board across removeAllItems — the popup may be its last owner,
+	// so without this retain the pointer becomes dangling after the remove.
+	[board retain];
+
 	[_boardLocationPopUpButton removeAllItems];
 	[_boardFilterComboBox removeAllItems];
 	[_postLocationPopUpButton removeAllItems];
@@ -1080,9 +1084,11 @@ NSString * const WCBoardsDidChangeUnreadCountNotification	= @"WCBoardsDidChangeU
 	[self _reloadBoardListsWithChildrenOfBoard:_boards level:0];
 	
 	index = board ? [_boardLocationPopUpButton indexOfItemWithRepresentedObject:board] : 0;
-	
+
 	[_boardLocationPopUpButton selectItemAtIndex:index < 0 ? 0 : index];
 	[_postLocationPopUpButton selectItemAtIndex:index < 0 ? 0 : index];
+
+	[board release];
 }
 
 
