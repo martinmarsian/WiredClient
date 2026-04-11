@@ -116,6 +116,10 @@ typedef enum _WCChatFormat					WCChatFormat;
 - (NSDictionary *)_currentTheme;
 - (void)_loadTheme:(NSDictionary *)theme;
 
+- (void)_cacheKnownUser:(WCUser *)user;
+- (void)_loadOfflineUsersFromCache;
+- (void)_removeOfflineUserWithLogin:(NSString *)login;
+
 @end
 
 
@@ -934,6 +938,77 @@ typedef enum _WCChatFormat					WCChatFormat;
 
 #pragma mark -
 
+- (NSString *)_knownUsersCacheKey {
+    return [NSString stringWithFormat:@"WCKnownUsersCache_%@", [[self connection] URLIdentifier]];
+}
+
+- (void)_cacheKnownUser:(WCUser *)user {
+    if([self chatID] != WCPublicChatID)
+        return;
+
+    NSString *login = [user login];
+    NSString *nick  = [user nick];
+    if(!login || !nick) return;  // skip users without login/nick (e.g. guests or other-server users)
+
+    NSString        *key  = [self _knownUsersCacheKey];
+    NSMutableArray  *list = [[[NSUserDefaults standardUserDefaults] arrayForKey:key] mutableCopy];
+    if(!list) list = [[NSMutableArray alloc] init];
+
+    BOOL found = NO;
+    for(NSUInteger i = 0; i < [list count]; i++) {
+        NSDictionary *entry = [list objectAtIndex:i];
+        if([[entry objectForKey:@"login"] isEqualToString:login]) {
+            [list replaceObjectAtIndex:i withObject:@{@"nick": nick, @"login": login}];
+            found = YES;
+            break;
+        }
+    }
+    if(!found)
+        [list addObject:@{@"nick": nick, @"login": login}];
+
+    [[NSUserDefaults standardUserDefaults] setObject:list forKey:key];
+    [list release];
+}
+
+- (void)_loadOfflineUsersFromCache {
+    if([self chatID] != WCPublicChatID)
+        return;
+
+    NSString *key = [self _knownUsersCacheKey];
+    if(!key) return;
+
+    NSArray *list = [[NSUserDefaults standardUserDefaults] arrayForKey:key];
+    if(!list) return;
+
+    for(id entry in list) {
+        if(![entry isKindOfClass:[NSDictionary class]]) continue;
+        NSString *login = [entry objectForKey:@"login"];
+        NSString *nick  = [entry objectForKey:@"nick"];
+        if(!login || !nick) continue;
+
+        // Skip users that are currently online
+        BOOL online = NO;
+        for(WCUser *u in _shownUsers) {
+            if(![u isOffline] && [[u login] isEqualToString:login]) { online = YES; break; }
+        }
+        if(online) continue;
+
+        WCUser *offlineUser = [WCUser offlineUserWithNick:nick login:login connection:[self connection]];
+        [_shownUsers addObject:offlineUser];
+    }
+}
+
+- (void)_removeOfflineUserWithLogin:(NSString *)login {
+    WCUser *toRemove = nil;
+    for(WCUser *u in _shownUsers) {
+        if(u.isOffline && [u.login isEqualToString:login]) { toRemove = u; break; }
+    }
+    if(toRemove)
+        [_shownUsers removeObject:toRemove];
+}
+
+#pragma mark -
+
 - (NSDictionary *)_currentTheme {
     return ([[self connection] theme] ?
             [[self connection] theme] :
@@ -1395,18 +1470,25 @@ typedef enum _WCChatFormat					WCChatFormat;
 	
 	if([[message name] isEqualToString:@"wired.chat.user_list"]) {
 		user = [WCUser userWithMessage:message connection:[self connection]];
-		
+
+		[self _cacheKnownUser:user];
+
 		[_allUsers addObject:user];
 		[_users setObject:user forKey:[NSNumber numberWithUnsignedInt:[user userID]]];
 	}
 	else if([[message name] isEqualToString:@"wired.chat.user_list.done"]) {
 		[_shownUsers addObjectsFromArray:_allUsers];
 		[_allUsers removeAllObjects];
-		
+
+		[self _loadOfflineUsersFromCache];
+
 		count = [_shownUsers count];
 		
-		for(i = 0; i < count; i++)
-			[[self connection] postNotificationName:WCChatUserAppearedNotification object:[_shownUsers objectAtIndex:i]];
+		for(i = 0; i < count; i++) {
+			WCUser *u = [_shownUsers objectAtIndex:i];
+			if(![u isOffline])
+				[[self connection] postNotificationName:WCChatUserAppearedNotification object:u];
+		}
 		
 		_receivedUserList = YES;
         [_userListTableView reloadData];
@@ -1467,7 +1549,10 @@ typedef enum _WCChatFormat					WCChatFormat;
 		return;
 	
 	user = [WCUser userWithMessage:message connection:[self connection]];
-	
+
+	[self _cacheKnownUser:user];
+	[self _removeOfflineUserWithLogin:[user login]];
+
 	[_shownUsers addObject:user];
 	[_users setObject:user forKey:[NSNumber numberWithUnsignedInt:[user userID]]];
 
@@ -1507,6 +1592,12 @@ typedef enum _WCChatFormat					WCChatFormat;
 	
 	[_shownUsers removeObject:user];
 	[_users removeObjectForKey:[NSNumber numberWithUnsignedInt:[user userID]]];
+
+	// Add offline stub so the user remains visible (grayed out) for messaging
+	if([self chatID] == WCPublicChatID && [user login] && [user nick]) {
+		WCUser *offlineUser = [WCUser offlineUserWithNick:[user nick] login:[user login] connection:[self connection]];
+		[_shownUsers addObject:offlineUser];
+	}
 
 	[_userListTableView reloadData];
 }
@@ -1610,6 +1701,11 @@ typedef enum _WCChatFormat					WCChatFormat;
 	[_shownUsers removeObject:victim];
 	[_users removeObjectForKey:[NSNumber numberWithInt:victimUserID]];
 
+	if([self chatID] == WCPublicChatID && [victim login] && [victim nick]) {
+		WCUser *offlineUser = [WCUser offlineUserWithNick:[victim nick] login:[victim login] connection:[self connection]];
+		[_shownUsers addObject:offlineUser];
+	}
+
 	[_userListTableView reloadData];
 }
 
@@ -1644,6 +1740,11 @@ typedef enum _WCChatFormat					WCChatFormat;
 	
 	[_shownUsers removeObject:victim];
 	[_users removeObjectForKey:[NSNumber numberWithInt:victimUserID]];
+
+	if([self chatID] == WCPublicChatID && [victim login] && [victim nick]) {
+		WCUser *offlineUser = [WCUser offlineUserWithNick:[victim nick] login:[victim login] connection:[self connection]];
+		[_shownUsers addObject:offlineUser];
+	}
 
 	[_userListTableView reloadData];
 }
@@ -2020,8 +2121,12 @@ typedef enum _WCChatFormat					WCChatFormat;
 	connected   = [[self connection] isConnected];
     selected    = [self selectedUser] ? YES : NO;
 	
-	if(selector == @selector(sendPrivateMessage:))
+	if(selector == @selector(sendPrivateMessage:)) {
+		WCUser *sel = [self selectedUser];
+		if(sel && [sel isOffline])
+			return ([[[self connection] account] messageSendMessages] && connected);
 		return ([[[self connection] account] messageSendMessages] && selected && connected);
+	}
     
     else if(selector == @selector(ignore:))
 		return (selected && connected);
@@ -2581,6 +2686,9 @@ typedef enum _WCChatFormat					WCChatFormat;
         }
 
         cellView.imageView.image = [user iconWithIdleTint:YES];
+
+        // Dim offline users to indicate they are not currently connected
+        cellView.alphaValue = [user isOffline] ? 0.4 : 1.0;
         
         return cellView;
     }

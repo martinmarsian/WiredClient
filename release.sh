@@ -24,11 +24,11 @@ set -euo pipefail
 #   export WC_TEAM_ID="XXXXXXXXXX"
 #   export WC_SIGN_ID="<SHA1 des Developer ID Application Zertifikats>"
 #   export WC_GITHUB_REPO="user/repo"
-APPLE_ID="${WC_APPLE_ID:?WC_APPLE_ID nicht gesetzt}"
-APP_PASSWORD="${WC_APP_PASSWORD:?WC_APP_PASSWORD nicht gesetzt}"
-TEAM_ID="${WC_TEAM_ID:?WC_TEAM_ID nicht gesetzt}"
 SIGN_ID="${WC_SIGN_ID:?WC_SIGN_ID nicht gesetzt}"
 GITHUB_REPO="${WC_GITHUB_REPO:?WC_GITHUB_REPO nicht gesetzt}"
+# Notarization uses a Keychain profile (stored once via:
+#   xcrun notarytool store-credentials "WiredClientRelease" --apple-id ... --team-id ... --password ...)
+NOTARY_PROFILE="${WC_NOTARY_PROFILE:-WiredClientRelease}"
 # ──────────────────────────────────────────────────────────────────────────────
 
 SRCROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -140,6 +140,14 @@ fi
 echo "  Signing: Sparkle.framework"
 [ -d "$SPARKLE" ] && sign_fw "$SPARKLE"
 
+# 4b. Frameworks nested inside other frameworks (e.g. WiredFoundation inside WiredNetworking)
+echo "  Signing: nested frameworks"
+for nested_fw in "$APP/Contents/Frameworks/"*.framework/Versions/*/Frameworks/*.framework; do
+    [ -d "$nested_fw" ] || continue
+    echo "    $(basename "$nested_fw") (nested)"
+    sign_fw "$nested_fw"
+done
+
 # 5. Weitere Frameworks
 echo "  Signing: app frameworks"
 for fw in "$APP/Contents/Frameworks/"*.framework; do
@@ -181,19 +189,20 @@ notarize() {
     local file="$1"
     local label="$2"
     echo "=== ${label} Notarisierung ==="
-    local out
+    local out rc
+    set +e
     out=$(xcrun notarytool submit "$file" \
-        --apple-id  "$APPLE_ID" \
-        --password  "$APP_PASSWORD" \
-        --team-id   "$TEAM_ID" \
+        --keychain-profile "$NOTARY_PROFILE" \
         --wait 2>&1)
+    rc=$?
+    set -e
     echo "$out"
-    if ! echo "$out" | grep -q "status: Accepted"; then
+    if [ $rc -ne 0 ] || ! echo "$out" | grep -q "status: Accepted"; then
         local nid
         nid=$(echo "$out" | grep -o 'id: [0-9a-f-]*' | head -1 | awk '{print $2}')
         echo "ERROR: Notarisierung fehlgeschlagen!"
         if [ -n "$nid" ]; then
-            echo "Log: xcrun notarytool log $nid --apple-id \"$APPLE_ID\" --password \"$APP_PASSWORD\" --team-id \"$TEAM_ID\""
+            echo "Log: xcrun notarytool log $nid --keychain-profile \"$NOTARY_PROFILE\""
         fi
         exit 1
     fi

@@ -34,6 +34,7 @@
 @interface WCUser : WCServerConnectionObject {
 	unsigned long			_userID;
 	BOOL					_idle;
+	BOOL					_isOffline;
 	NSString				*_nick;
 	NSString				*_status;
 	NSImage					*_icon;
@@ -53,6 +54,7 @@
 + (NSColor *)colorForColor:(WCAccountColor)color idleTint:(BOOL)idleTint;
 
 + (id)userWithMessage:(WIP7Message *)message connection:(WCServerConnection *)connection;
++ (id)offlineUserWithNick:(NSString *)nick login:(NSString *)login connection:(WCServerConnection *)connection;
 
 - (void)setIdle:(BOOL)value;
 - (void)setNick:(NSString *)nick;
@@ -79,6 +81,7 @@
 - (WCTransfer *)transfer;
 - (WCAccountColor)color;
 
+- (BOOL)isOffline;
 - (BOOL)isIgnored;
 
 @end

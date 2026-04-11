@@ -165,6 +165,17 @@
 
 
 
++ (id)offlineUserWithNick:(NSString *)nick login:(NSString *)login connection:(WCServerConnection *)connection {
+	WCUser *user = [[[self alloc] initWithConnection:connection] autorelease];
+	user->_isOffline = YES;
+	user->_nick   = [nick copy];
+	user->_login  = [login copy];
+	user->_color  = WCAccountColorBlack;
+	return user;
+}
+
+
+
 - (void)dealloc {
 	[_nick release];
 	[_status release];
@@ -188,13 +199,18 @@
 - (BOOL)isEqual:(id)object {
 	if(![self isKindOfClass:[object class]])
 		return NO;
-	
+
+	if(_isOffline && [(WCUser *)object isOffline])
+		return [_login isEqualToString:[(WCUser *)object login]];
+
 	return [self userID] == [object userID];
 }
 
 
 
 - (NSUInteger)hash {
+	if(_isOffline)
+		return [_login hash];
 	return [self userID];
 }
 
@@ -260,6 +276,12 @@
 
 - (BOOL)isIdle {
 	return _idle;
+}
+
+
+
+- (BOOL)isOffline {
+	return _isOffline;
 }
 
 

@@ -309,10 +309,18 @@ NSString * const WCMessagesDidChangeUnreadCountNotification		= @"WCMessagesDidCh
 	[[WCDatabaseController sharedController] save];
     [self _sortConversations];
 
-	p7Message = [WIP7Message messageWithName:@"wired.message.send_message" spec:WCP7Spec];
-	[p7Message setUInt32:[[conversation user] userID] forName:@"wired.user.id"];
-	[p7Message setString:[self _stringForMessageString:[message messageString]] forName:@"wired.message.message"];
-	[[conversation connection] sendMessage:p7Message];
+	if([[conversation user] isOffline]) {
+		// Target user is offline — store on server for delivery on their next login
+		p7Message = [WIP7Message messageWithName:@"wired.message.send_offline_message" spec:WCP7Spec];
+		[p7Message setString:[[conversation user] login] forName:@"wired.message.offline_recipient"];
+		[p7Message setString:[self _stringForMessageString:[message messageString]] forName:@"wired.message.message"];
+		[[conversation connection] sendMessage:p7Message];
+	} else {
+		p7Message = [WIP7Message messageWithName:@"wired.message.send_message" spec:WCP7Spec];
+		[p7Message setUInt32:[[conversation user] userID] forName:@"wired.user.id"];
+		[p7Message setString:[self _stringForMessageString:[message messageString]] forName:@"wired.message.message"];
+		[[conversation connection] sendMessage:p7Message];
+	}
 	
 	[[WCStats stats] addUnsignedInt:1 forKey:WCStatsMessagesSent];
 	
@@ -1105,6 +1113,7 @@ NSString * const WCMessagesDidChangeUnreadCountNotification		= @"WCMessagesDidCh
 	
 	[connection addObserver:self selector:@selector(wiredMessageMessage:) messageName:@"wired.message.message"];
 	[connection addObserver:self selector:@selector(wiredMessageBroadcast:) messageName:@"wired.message.broadcast"];
+	[connection addObserver:self selector:@selector(wiredMessageOfflineMessageDelivered:) messageName:@"wired.message.offline_message_delivered"];
 	
 	[self _validate];
 }
@@ -1253,6 +1262,55 @@ NSString * const WCMessagesDidChangeUnreadCountNotification		= @"WCMessagesDidCh
 	[connection triggerEvent:WCEventsMessageReceived info1:message info2:user];
 	
 	[self _validate];
+}
+
+
+
+- (void)wiredMessageOfflineMessageDelivered:(WIP7Message *)p7Message {
+    WCServerConnection      *connection;
+    WCUser                  *senderStub;
+    WDPrivateMessage        *message;
+    WDConversation          *conversation, *selectedConversation;
+    NSString                *senderNick, *msgText;
+
+    connection  = [p7Message contextInfo];
+    senderNick  = [p7Message stringForName:@"wired.message.offline_sender_nick"];
+    msgText     = [p7Message stringForName:@"wired.message.message"];
+
+    if(!senderNick || !msgText) return;
+
+    // Create a stub user representing the offline sender (no login known, use nick as login key)
+    senderStub = [WCUser offlineUserWithNick:senderNick login:senderNick connection:connection];
+
+    conversation         = [self _messagesConversationForUser:senderStub];
+    selectedConversation = [self _selectedConversation];
+
+    if(![conversation direction])
+        [conversation setDirection:[NSNumber numberWithInteger:WCMessageFrom]];
+
+    message = [WDPrivateMessage messageFromUser:senderStub
+                                        message:msgText
+                                     connection:connection];
+
+    [conversation setDate:[message date]];
+    [conversation addMessagesObject:message];
+
+    if(![[self window] isKeyWindow])
+        [conversation setNumberOfUnreadsValue:([conversation numberOfUnreadsValue] + 1)];
+
+    [[WCDatabaseController sharedController] save];
+    [self _sortConversations];
+
+    if(selectedConversation == conversation)
+        [_conversationController appendMessage:message];
+
+    if([[[WCSettings settings] eventWithTag:WCEventsMessageReceived] boolForKey:WCEventsShowDialog])
+        [self _showDialogForMessage:message];
+
+    [[WCStats stats] addUnsignedInt:1 forKey:WCStatsMessagesReceived];
+    [[NSNotificationCenter defaultCenter] postNotificationName:WCMessagesDidChangeUnreadCountNotification];
+
+    [self _validate];
 }
 
 
