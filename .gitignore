@@ -216,3 +216,9 @@ build/
 ##########################################
 
 ##########################################
+
+# Release script and build artifacts
+release.sh
+appcast.xml
+WiredClient-*.zip
+WiredClient-*.dmg

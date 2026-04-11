@@ -42,14 +42,55 @@
 	(((options) & WI_P7_ENCRYPTION_RSA_AES128_SHA1) ||		\
 	 ((options) & WI_P7_ENCRYPTION_RSA_AES192_SHA1) ||		\
 	 ((options) & WI_P7_ENCRYPTION_RSA_AES256_SHA1) ||		\
-	 ((options) & WI_P7_ENCRYPTION_RSA_BF128_SHA1)  ||		\
-	 ((options) & WI_P7_ENCRYPTION_RSA_3DES192_SHA1) ||		\
-	 ((options) & WI_P7_ENCRYPTION_RSA_AES256_SHA256))			
+	 ((options) & WI_P7_ENCRYPTION_RSA_BF128_SHA1) ||		\
+	 ((options) & WI_P7_ENCRYPTION_RSA_3DES192_SHA1) ||     \
+     ((options) & WI_P7_ENCRYPTION_RSA_AES128_SHA256) ||    \
+     ((options) & WI_P7_ENCRYPTION_RSA_AES192_SHA256) ||    \
+     ((options) & WI_P7_ENCRYPTION_RSA_AES256_SHA256) ||    \
+     ((options) & WI_P7_ENCRYPTION_RSA_BF128_SHA256) ||     \
+     ((options) & WI_P7_ENCRYPTION_RSA_3DES192_SHA256) ||   \
+     ((options) & WI_P7_ENCRYPTION_RSA_AES128_SHA512) ||    \
+     ((options) & WI_P7_ENCRYPTION_RSA_AES192_SHA512) ||    \
+     ((options) & WI_P7_ENCRYPTION_RSA_AES256_SHA512) ||    \
+     ((options) & WI_P7_ENCRYPTION_RSA_BF128_SHA512) ||     \
+     ((options) & WI_P7_ENCRYPTION_RSA_3DES192_SHA512))
 
 #define WI_P7_CHECKSUM_ENABLED(options)						\
-	(((options) & WI_P7_CHECKSUM_SHA1)  || 					\
-	 ((options) & WI_P7_CHECKSUM_SHA256))
+	(((options) & WI_P7_CHECKSUM_SHA1) ||                   \
+     ((options) & WI_P7_CHECKSUM_SHA256) ||                 \
+     ((options) & WI_P7_CHECKSUM_SHA512))
 
+#define WI_P7_DEPRECATED_ENCRYPTION_CIPHER(options)         \
+    ((options) & WI_P7_ENCRYPTION_RSA_AES128_SHA1 ?         \
+        true :                                              \
+     (options) & WI_P7_ENCRYPTION_RSA_AES192_SHA1 ?         \
+        true :                                              \
+     (options) & WI_P7_ENCRYPTION_RSA_AES256_SHA1 ?         \
+        true :                                              \
+     (options) & WI_P7_ENCRYPTION_RSA_BF128_SHA1 ?          \
+        true :                                              \
+     (options) & WI_P7_ENCRYPTION_RSA_3DES192_SHA1 ?        \
+        true :                                              \
+     (options) & WI_P7_ENCRYPTION_RSA_AES128_SHA256 ?       \
+        true :                                              \
+     (options) & WI_P7_ENCRYPTION_RSA_AES192_SHA256 ?       \
+        false :                                             \
+     (options) & WI_P7_ENCRYPTION_RSA_AES256_SHA256 ?       \
+        false :                                             \
+     (options) & WI_P7_ENCRYPTION_RSA_BF128_SHA256 ?        \
+        true :                                              \
+     (options) & WI_P7_ENCRYPTION_RSA_3DES192_SHA256 ?      \
+        true :                                              \
+     (options) & WI_P7_ENCRYPTION_RSA_AES128_SHA512 ?       \
+        true :                                              \
+     (options) & WI_P7_ENCRYPTION_RSA_AES192_SHA512 ?       \
+        false :                                             \
+     (options) & WI_P7_ENCRYPTION_RSA_AES256_SHA512 ?       \
+        false :                                             \
+     (options) & WI_P7_ENCRYPTION_RSA_BF128_SHA512 ?        \
+        true :                                              \
+     (options) & WI_P7_ENCRYPTION_RSA_3DES192_SHA512 ?      \
+        true : true)
 
 enum _wi_p7_options {
 	WI_P7_COMPRESSION_DEFLATE						= (1 << 0),
@@ -58,18 +99,38 @@ enum _wi_p7_options {
 	WI_P7_ENCRYPTION_RSA_AES256_SHA1				= (1 << 3),
 	WI_P7_ENCRYPTION_RSA_BF128_SHA1					= (1 << 4),
 	WI_P7_ENCRYPTION_RSA_3DES192_SHA1				= (1 << 5),
-	WI_P7_ENCRYPTION_RSA_AES256_SHA256				= (1 << 6),
-	WI_P7_CHECKSUM_SHA1								= (1 << 7),
-	WI_P7_CHECKSUM_SHA256							= (1 << 8),
+    WI_P7_ENCRYPTION_RSA_AES128_SHA256              = (1 << 6),
+    WI_P7_ENCRYPTION_RSA_AES192_SHA256              = (1 << 7),
+    WI_P7_ENCRYPTION_RSA_AES256_SHA256              = (1 << 8),
+    WI_P7_ENCRYPTION_RSA_BF128_SHA256               = (1 << 9),
+    WI_P7_ENCRYPTION_RSA_3DES192_SHA256             = (1 << 10),
+    WI_P7_ENCRYPTION_RSA_AES128_SHA512              = (1 << 11),
+    WI_P7_ENCRYPTION_RSA_AES192_SHA512              = (1 << 12),
+    WI_P7_ENCRYPTION_RSA_AES256_SHA512              = (1 << 13),
+    WI_P7_ENCRYPTION_RSA_BF128_SHA512               = (1 << 14),
+    WI_P7_ENCRYPTION_RSA_3DES192_SHA512             = (1 << 15),
+	WI_P7_CHECKSUM_SHA1								= (1 << 16),
+    WI_P7_CHECKSUM_SHA256                           = (1 << 17),
+    WI_P7_CHECKSUM_SHA512                           = (1 << 18),
 	WI_P7_ALL										= (WI_P7_COMPRESSION_DEFLATE |
 													   WI_P7_ENCRYPTION_RSA_AES128_SHA1 |
 													   WI_P7_ENCRYPTION_RSA_AES192_SHA1 |
 													   WI_P7_ENCRYPTION_RSA_AES256_SHA1 |
 													   WI_P7_ENCRYPTION_RSA_BF128_SHA1 |
 													   WI_P7_ENCRYPTION_RSA_3DES192_SHA1 |
-													   WI_P7_ENCRYPTION_RSA_AES256_SHA256 |
-													   WI_P7_CHECKSUM_SHA1 | 
-													   WI_P7_CHECKSUM_SHA256)
+                                                       WI_P7_ENCRYPTION_RSA_AES128_SHA256 |
+                                                       WI_P7_ENCRYPTION_RSA_AES192_SHA256 |
+                                                       WI_P7_ENCRYPTION_RSA_AES256_SHA256 |
+                                                       WI_P7_ENCRYPTION_RSA_BF128_SHA256 |
+                                                       WI_P7_ENCRYPTION_RSA_3DES192_SHA256 |
+                                                       WI_P7_ENCRYPTION_RSA_AES128_SHA512 |
+                                                       WI_P7_ENCRYPTION_RSA_AES192_SHA512 |
+                                                       WI_P7_ENCRYPTION_RSA_AES256_SHA512 |
+                                                       WI_P7_ENCRYPTION_RSA_BF128_SHA512 |
+                                                       WI_P7_ENCRYPTION_RSA_3DES192_SHA512 |
+                                                       WI_P7_CHECKSUM_SHA1 |
+													   WI_P7_CHECKSUM_SHA256 |
+                                                       WI_P7_CHECKSUM_SHA512)
 };
 typedef enum _wi_p7_options							wi_p7_options_t;
 
@@ -114,7 +175,7 @@ WI_EXPORT wi_p7_message_t *							wi_p7_socket_read_message(wi_p7_socket_t *, wi
 WI_EXPORT wi_boolean_t								wi_p7_socket_write_oobdata(wi_p7_socket_t *, wi_time_interval_t, const void *, uint32_t);
 WI_EXPORT wi_integer_t								wi_p7_socket_read_oobdata(wi_p7_socket_t *, wi_time_interval_t, void **);
 
-
+//WI_EXPORT wi_boolean_t                              wi_p7_socket_deprecated_cipher(uint);
 WI_EXPORT wi_boolean_t								wi_p7_socket_debug;
 WI_EXPORT wi_p7_socket_password_provider_func_t		*wi_p7_socket_password_provider;
 

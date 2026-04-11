@@ -2597,6 +2597,10 @@
 				GCC_PREFIX_HEADER = "WiredNetworking/WiredNetworking-Prefix.pch";
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(BUILT_PRODUCTS_DIR)",
+					"$(SRCROOT)/libwired/run/include",
+				);
 				INFOPLIST_FILE = "WiredNetworking/WiredNetworking-Info.plist";
 				INSTALL_PATH = "@rpath";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited)";
@@ -2628,6 +2632,10 @@
 				GCC_PREFIX_HEADER = "WiredNetworking/WiredNetworking-Prefix.pch";
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(BUILT_PRODUCTS_DIR)",
+					"$(SRCROOT)/libwired/run/include",
+				);
 				INFOPLIST_FILE = "WiredNetworking/WiredNetworking-Info.plist";
 				INSTALL_PATH = "@rpath";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited)";
