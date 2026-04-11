@@ -760,7 +760,7 @@
 			path = ../../../../../../../../Downloads/WiredClient;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		29B97314FDCFA39411CA2CEA = {
+		29B97314FDCFA39411CA2CEA /* WiredClient */ = {
 			isa = PBXGroup;
 			children = (
 				29B97315FDCFA39411CA2CEA /* Sources */,
@@ -1494,7 +1494,7 @@
 				de,
 				Base,
 			);
-			mainGroup = 29B97314FDCFA39411CA2CEA;
+			mainGroup = 29B97314FDCFA39411CA2CEA /* WiredClient */;
 			productRefGroup = 19C28FACFE9D520D11CA2CBB /* Products */;
 			projectDirPath = "";
 			projectReferences = (
@@ -1665,7 +1665,8 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\n";
+			shellScript = "
+";
 		};
 		4C8243FB17DE37C90065CEEE /* Generate Core Data Model */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -2299,7 +2300,7 @@
 					"$(PROJECT_DIR)/vendor/WiredFrameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 2.6;
+				MARKETING_VERSION = 2.7;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "fr.read-write.WiredClient";
 				PRODUCT_IDENTIFIER = "fr.read-write.WiredClient";
@@ -2471,7 +2472,7 @@
 					"$(PROJECT_DIR)/vendor/WiredFrameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 2.6;
+				MARKETING_VERSION = 2.7;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "fr.read-write.WiredClientDebug";
 				PRODUCT_IDENTIFIER = "fr.read-write.WiredClientDebug";
@@ -2557,7 +2558,7 @@
 				);
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 2.6;
+				MARKETING_VERSION = 2.7;
 				PRODUCT_NAME = "Wired Client";
 				USER_HEADER_SEARCH_PATHS = "\"$(BUILT_PRODUCTS_DIR)\"/**";
 				VERSIONING_SYSTEM = "apple-generic";

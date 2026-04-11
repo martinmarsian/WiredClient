@@ -1559,6 +1559,15 @@ NSString * const WCBoardsDidChangeUnreadCountNotification	= @"WCBoardsDidChangeU
 	
 	[_postTextView setContinuousSpellCheckingEnabled:[[WCSettings settings] boolForKey:WCBoardPostContinuousSpellChecking]];
     [_maxTitleLengthTextField setHidden:YES];
+
+    // Collapse the preview pane: the post panel has a vertical NSSplitView
+    // with editor (left) and preview (right). We only want the editor.
+    NSView *editorContainer = [[_postTextView enclosingScrollView] superview];
+    NSSplitView *postSplitView = (NSSplitView *)[editorContainer superview];
+    if ([postSplitView isKindOfClass:[NSSplitView class]]) {
+        [postSplitView setPosition:[postSplitView maxPossiblePositionOfDividerAtIndex:0]
+                 ofDividerAtIndex:0];
+    }
     
     [self _reloadBoard:_boards];
 	[self _themeDidChange];
