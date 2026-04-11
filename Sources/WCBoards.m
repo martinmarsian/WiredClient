@@ -1504,11 +1504,11 @@ NSString * const WCBoardsDidChangeUnreadCountNotification	= @"WCBoardsDidChangeU
 
 	_errorQueue = [[WCErrorQueue alloc] initWithWindow:[self window]];
 	
-	toolbar = [[NSToolbar alloc] initWithIdentifier:@"Boards"];
+	toolbar = [[NSToolbar alloc] initWithIdentifier:@"Boards2"];
 	[toolbar setDelegate:self];
 	[toolbar setAllowsUserCustomization:YES];
-	[toolbar setAutosavesConfiguration:YES];
-    [toolbar setDisplayMode:NSToolbarDisplayModeIconOnly];
+	[toolbar setAutosavesConfiguration:NO];
+	[toolbar setShowsBaselineSeparator:NO];
 	[[self window] setToolbar:toolbar];
 	[toolbar release];
 	
@@ -1524,6 +1524,7 @@ NSString * const WCBoardsDidChangeUnreadCountNotification	= @"WCBoardsDidChangeU
 	[_boardsOutlineView registerForDraggedTypes:[NSArray arrayWithObjects:WCBoardPboardType, WCThreadPboardType, NULL]];
 	[_boardsOutlineView setTarget:self];
 	[_boardsOutlineView setDeleteAction:@selector(deleteBoard:)];
+
 	[_boardsOutlineView expandItem:_smartBoards];
     [_boardsOutlineView setFloatsGroupRows:NO];
     
@@ -1601,37 +1602,67 @@ NSString * const WCBoardsDidChangeUnreadCountNotification	= @"WCBoardsDidChangeU
 	NSSearchField		*searchField;
 	
 	if([identifier isEqualToString:@"AddThread"]) {
+		NSButton *btn = [[[NSButton alloc] initWithFrame:NSMakeRect(0,0,32,32)] autorelease];
+		[btn setButtonType:NSButtonTypeMomentaryChange];
+		[btn setBordered:NO];
+		[btn setImage:[NSImage imageNamed:@"NewThread"]];
+		[btn setImageScaling:NSImageScaleProportionallyUpOrDown];
+		[btn setImagePosition:NSImageOnly];
 		return [NSToolbarItem toolbarItemWithIdentifier:identifier
 												   name:NSLS(@"New Thread", @"New thread toolbar item")
-												content:[NSImage imageNamed:@"NewThread"]
+												content:btn
 												 target:self
 												 action:@selector(addThread:)];
 	}
 	else if([identifier isEqualToString:@"DeleteThread"]) {
+		NSButton *btn = [[[NSButton alloc] initWithFrame:NSMakeRect(0,0,32,32)] autorelease];
+		[btn setButtonType:NSButtonTypeMomentaryChange];
+		[btn setBordered:NO];
+		[btn setImage:[NSImage imageNamed:@"DeleteThread"]];
+		[btn setImageScaling:NSImageScaleProportionallyUpOrDown];
+		[btn setImagePosition:NSImageOnly];
 		return [NSToolbarItem toolbarItemWithIdentifier:identifier
 												   name:NSLS(@"Delete Thread", @"Delete thread toolbar item")
-												content:[NSImage imageNamed:@"DeleteThread"]
+												content:btn
 												 target:self
 												 action:@selector(deleteThread:)];
 	}
 	else if([identifier isEqualToString:@"PostReply"]) {
+		NSButton *btn = [[[NSButton alloc] initWithFrame:NSMakeRect(0,0,32,32)] autorelease];
+		[btn setButtonType:NSButtonTypeMomentaryChange];
+		[btn setBordered:NO];
+		[btn setImage:[NSImage imageNamed:@"ReplyThread"]];
+		[btn setImageScaling:NSImageScaleProportionallyUpOrDown];
+		[btn setImagePosition:NSImageOnly];
 		return [NSToolbarItem toolbarItemWithIdentifier:identifier
 												   name:NSLS(@"Post Reply", @"Post reply toolbar item")
-												content:[NSImage imageNamed:@"ReplyThread"]
+												content:btn
 												 target:self
 												 action:@selector(postReply:)];
 	}
 	else if([identifier isEqualToString:@"MarkAsRead"]) {
+		NSButton *btn = [[[NSButton alloc] initWithFrame:NSMakeRect(0,0,32,32)] autorelease];
+		[btn setButtonType:NSButtonTypeMomentaryChange];
+		[btn setBordered:NO];
+		[btn setImage:[NSImage imageNamed:@"MarkAsRead"]];
+		[btn setImageScaling:NSImageScaleProportionallyUpOrDown];
+		[btn setImagePosition:NSImageOnly];
 		return [NSToolbarItem toolbarItemWithIdentifier:identifier
 												   name:NSLS(@"Mark As Read", @"Mark as read toolbar item")
-												content:[NSImage imageNamed:@"MarkAsRead"]
+												content:btn
 												 target:self
 												 action:@selector(markAsRead:)];
 	}
 	else if([identifier isEqualToString:@"MarkAllAsRead"]) {
+		NSButton *btn = [[[NSButton alloc] initWithFrame:NSMakeRect(0,0,32,32)] autorelease];
+		[btn setButtonType:NSButtonTypeMomentaryChange];
+		[btn setBordered:NO];
+		[btn setImage:[NSImage imageNamed:@"MarkAllAsRead"]];
+		[btn setImageScaling:NSImageScaleProportionallyUpOrDown];
+		[btn setImagePosition:NSImageOnly];
 		return [NSToolbarItem toolbarItemWithIdentifier:identifier
 												   name:NSLS(@"Mark All As Read", @"Mark all as read toolbar item")
-												content:[NSImage imageNamed:@"MarkAllAsRead"]
+												content:btn
 												 target:self
 												 action:@selector(markAllAsRead:)];
 	}
@@ -1653,15 +1684,12 @@ NSString * const WCBoardsDidChangeUnreadCountNotification	= @"WCBoardsDidChangeU
 - (NSArray *)toolbarDefaultItemIdentifiers:(NSToolbar *)toolbar {
 	return [NSArray arrayWithObjects:
 		@"AddThread",
-        NSToolbarFlexibleSpaceItemIdentifier,
-        @"PostReply",
 		@"DeleteThread",
-		NSToolbarSpaceItemIdentifier,
-		NSToolbarSpaceItemIdentifier,
+		@"PostReply",
 		@"MarkAsRead",
 		@"MarkAllAsRead",
-		NSToolbarFlexibleSpaceItemIdentifier,
 		@"Search",
+		NSToolbarFlexibleSpaceItemIdentifier,
 		NULL];
 }
 
