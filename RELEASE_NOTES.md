@@ -1,0 +1,95 @@
+# Wired Client — Release Notes
+
+## Version 2.7 (Build 94)
+
+### What's New
+
+---
+
+### Offline Messaging
+
+Private messages can now be sent to users who are not currently connected. The server stores the message and delivers it the next time the recipient logs in.
+
+**How it works:**
+
+- Offline users appear as **grayed-out entries** in the chat user list (40% opacity)
+- Clicking an offline user opens the private message window as usual — the message is delivered when the recipient reconnects
+- Pending messages stored on the server are displayed automatically on your next login
+- The offline user list is cached per server, so known users remain visible even after they disconnect
+
+**Requirements:** Wired Server 2.5.8 or later is required for offline message storage and delivery. The offline user display in the chat list works with any server that sends login names (Wired Server 2.5.8+).
+
+---
+
+### macOS 26 Liquid Glass Toolbar
+
+The Public Chat toolbar has been redesigned for macOS 26 (Tahoe) with the new **Liquid Glass** appearance:
+
+- Toolbar items use `NSToolbarItemGroup` with `.automaticPopup` display mode, adapting cleanly to window width
+- The topic bar now has a proper separator line at its bottom edge
+- All toolbar icons and layout are optimised for both light and dark appearance on macOS 26
+
+---
+
+### TLS Security Hardening
+
+- **TLS 1.2 minimum** — connections to Wired servers now require TLS 1.2 or higher. The legacy `TLSv1_client_method()` and `TLSv1_1_*` APIs have been removed in favour of `TLS_client_method()` with an explicit minimum version of TLS 1.2
+- **Strongest cipher enforced** — the encryption is always AES-256 with SHA-512, the strongest combination supported by the Wired protocol
+- **Weak ciphers removed** — Blowfish and 3DES have been removed from the cipher list entirely; any server-side selection is silently remapped to AES-256
+
+---
+
+### Cipher Selection Hidden
+
+The cipher selection dropdown in the Bookmark editor and Connect dialog has been hidden. The client always negotiates the strongest available cipher (AES-256/SHA-512) automatically — manual selection was confusing and offered no security benefit.
+
+---
+
+### Bug Fixes
+
+- **Crash on reconnect** — fixed a crash that occurred when reconnecting to a server where a private message conversation was already open
+- **Checksum algorithm** — corrected a mismatch between the checksum algorithm used for file transfers (SHA-256) and what was declared in the protocol handshake
+
+---
+
+### Release Infrastructure
+
+- **`release.sh`** — new shell script automates the post-archive release pipeline: re-signing with Developer ID Application, creating ZIP (for Sparkle auto-update) and DMG (for manual download), notarizing both with Apple, stapling the DMG, computing the Sparkle EdDSA signature, and updating `appcast.xml`
+- **`appcast.xml`** — Sparkle feed updated for 2.7, pointing to the GitHub release assets
+
+---
+
+### Modernization (macOS 13+ / Xcode 26 / Apple Silicon)
+
+This fork has been comprehensively modernized from the original Wired Client codebase:
+
+| Area | Change |
+|---|---|
+| **Deployment target** | Raised from macOS 10.10 to **macOS 13.0 Ventura** |
+| **Architecture** | Universal Binary (Apple Silicon arm64 + Intel x86_64) |
+| **OpenSSL** | Upgraded from OpenSSL 1.x to **OpenSSL 3.3** (opaque struct APIs, `DH_set0_pqg`, `EVP_PKEY_base_id`) |
+| **Notifications** | Migrated from deprecated Growl/`NSUserNotification` to **`UNUserNotificationCenter`** |
+| **Auto-update** | Migrated from Sparkle v1 (`SUUpdater`) to **Sparkle v2** (`SPUStandardUpdaterController`) with EdDSA signatures |
+| **Xcode 26 fixes** | `@import Darwin.Availability` → `#import <Availability.h>`; `objc_msgSend` casts for arm64 strict SDK |
+| **Build** | Removed custom "Code Sign" build phase that required a specific Developer ID certificate |
+
+---
+
+### System Requirements
+
+| | |
+|---|---|
+| **macOS** | 13.0 Ventura or later |
+| **Architecture** | Universal (Apple Silicon + Intel) |
+| **Server** | Wired Server 2.5.7 or later recommended; 2.5.8+ required for offline messaging |
+
+---
+
+### Distribution
+
+- **`WiredClient-2.7.zip`** — used by Sparkle for in-app auto-update. Notarized by Apple.
+- **`WiredClient-2.7.dmg`** — for manual download and installation. Notarized and stapled.
+
+---
+
+*Based on the original Wired Client by Rafaël Warnault / nark. Fork maintained by Joerg Maertin.*
