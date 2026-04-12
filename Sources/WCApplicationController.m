@@ -690,6 +690,12 @@ static WCApplicationController		*sharedController;
                                                                   userDriverDelegate:nil];
 
     // Feed URL is configured via SUFeedURL in Info.plist — no programmatic override needed.
+    // Remove any cached SUFeedURL from user defaults (e.g. copied over from a debug plist)
+    // so Sparkle always reads the URL from Info.plist.
+    if ([[NSUserDefaults standardUserDefaults] objectForKey:@"SUFeedURL"]) {
+        [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"SUFeedURL"];
+        [[NSUserDefaults standardUserDefaults] synchronize];
+    }
 
     [_updaterController.updater setSendsSystemProfile:YES];
     [_updaterController.updater performSelector:@selector(checkForUpdatesInBackground) afterDelay:5.0f];
