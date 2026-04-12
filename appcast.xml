@@ -74,5 +74,22 @@
         sparkle:edSignature="QKmum+dpUflWTAALA1l7X/+g112/fDQE/4R6EnS2I7HuhMzsQNwR9TVxmGZEK8SU4O/IWW8E2URqLcJ3S7S9CA=="/>
     </item>
 
+
+    <item>
+      <title>Wired Client 2.7</title>
+      <pubDate>So., 12 Apr. 2026 08:11:19 +0000</pubDate>
+      <sparkle:releaseNotesLink>
+        https://github.com/martinmarsian/WiredClient/releases/tag/v2.7
+      </sparkle:releaseNotesLink>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/martinmarsian/WiredClient/releases/download/v2.7/WiredClient-2.7.zip"
+        sparkle:version="98"
+        sparkle:shortVersionString="2.7"
+        type="application/zip"
+        length="13467447"
+        sparkle:edSignature="d/FTeAudV3hEJK7Q9baKzuVSg1rN96aD4LE0lOR589PtNU9V79W3ST0co6p/x7q0qAi4eLoS1G59fXN3UKEpBg=="/>
+    </item>
+
   </channel>
 </rss>
