@@ -152,7 +152,7 @@
       </sparkle:releaseNotesLink>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/martinmarsian/WiredClient/releases/download/v2.7/WiredClient-2.7.zip"
+        url="https://github.com/martinmarsian/WiredClient/releases/download/v2.7.102/WiredClient-2.7.zip"
         sparkle:version="102"
         sparkle:shortVersionString="2.7"
         type="application/zip"
