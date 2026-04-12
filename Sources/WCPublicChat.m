@@ -151,7 +151,7 @@ typedef enum _WCChatActivity				WCChatActivity;
 
     button = (NSButton *)[item view];
     image  = [[connection server] banner];
-    [button setImage:image ? image : [NSImage imageNamed:@"Banner"]];
+    [button setImage:image ? image : [NSImage imageWithSystemSymbolName:@"globe" accessibilityDescription:nil]];
 
     if(connection) {
         [item setLabel:[connection name]];
@@ -651,7 +651,7 @@ typedef enum _WCChatActivity				WCChatActivity;
         NSButton *button = [[[NSButton alloc] initWithFrame:NSMakeRect(0, 0, 180, 34)] autorelease];
         [button setButtonType:NSButtonTypeMomentaryChange];
         [button setBordered:NO];
-        [button setImage:[NSImage imageNamed:@"Banner"]];
+        [button setImage:[NSImage imageWithSystemSymbolName:@"globe" accessibilityDescription:nil]];
         [button setImageScaling:NSImageScaleProportionallyUpOrDown];
         [button setImagePosition:NSImageOnly];
         NSToolbarItem *item = [NSToolbarItem toolbarItemWithIdentifier:identifier
@@ -677,9 +677,15 @@ typedef enum _WCChatActivity				WCChatActivity;
 												 action:@selector(messages:)];
 	}
 	else if([identifier isEqualToString:@"Files"]) {
+		NSButton *btn = [[[NSButton alloc] initWithFrame:NSMakeRect(0,0,32,32)] autorelease];
+		[btn setButtonType:NSButtonTypeMomentaryChange];
+		[btn setBordered:NO];
+		[btn setImage:[NSImage imageNamed:@"Folder"]];
+		[btn setImageScaling:NSImageScaleProportionallyUpOrDown];
+		[btn setImagePosition:NSImageOnly];
 		return [NSToolbarItem toolbarItemWithIdentifier:identifier
 												   name:NSLS(@"Files", @"Files toolbar item")
-												content:[NSImage imageNamed:@"Folder"]
+												content:btn
 												 target:self
 												 action:@selector(files:)];
 	}
@@ -726,16 +732,28 @@ typedef enum _WCChatActivity				WCChatActivity;
 												 action:@selector(clear:)];
 	}
 	else if([identifier isEqualToString:@"Now Playing"]) {
+		NSButton *btn = [[[NSButton alloc] initWithFrame:NSMakeRect(0,0,32,32)] autorelease];
+		[btn setButtonType:NSButtonTypeMomentaryChange];
+		[btn setBordered:NO];
+		[btn setImage:[NSImage imageNamed:@"NowPlaying"]];
+		[btn setImageScaling:NSImageScaleProportionallyUpOrDown];
+		[btn setImagePosition:NSImageOnly];
 		return [NSToolbarItem toolbarItemWithIdentifier:identifier
 												   name:NSLS(@"Now Playing", @"Now Playing public chat")
-												content:[NSImage imageNamed:@"NowPlaying"]
+												content:btn
 												 target:self
 												 action:@selector(nowPlaying:)];
 	}
 	else if([identifier isEqualToString:@"Chat History"]) {
+		NSButton *btn = [[[NSButton alloc] initWithFrame:NSMakeRect(0,0,32,32)] autorelease];
+		[btn setButtonType:NSButtonTypeMomentaryChange];
+		[btn setBordered:NO];
+		[btn setImage:[NSImage imageNamed:@"Chat History"]];
+		[btn setImageScaling:NSImageScaleProportionallyUpOrDown];
+		[btn setImagePosition:NSImageOnly];
 		return [NSToolbarItem toolbarItemWithIdentifier:identifier
 												   name:NSLS(@"Chat History", @"Chat History public chat")
-												content:[NSImage imageNamed:@"Chat History"]
+												content:btn
 												 target:self
 												 action:@selector(chatHistory:)];
 	}
