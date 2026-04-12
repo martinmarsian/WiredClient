@@ -1,5 +1,16 @@
 # Wired Client — Release Notes
 
+## Version 2.7 (Build 97)
+
+### Bug Fixes (Build 97)
+
+- **Boards toolbar** — action icons (New Thread, Delete Thread, Post Reply, Mark as Read, Mark All as Read) were invisible or hidden in the overflow menu (`>>`) on macOS 26 Liquid Glass. Fixed by converting all items to view-based `NSButton` with a fixed 32×32 frame, preventing Liquid Glass from expanding the capsule width.
+- **Boards post panel** — the compose area was split in two; the preview pane is now collapsed so only the editor is visible by default.
+- **Toolbar customize sheet — oversized icons** — Dateien (512×512 PNG), Es spielt gerade and Chat Verlauf (256×256 PNG), Bann-Liste (64×64 PNG) and Trennen (PDF vector) all rendered at full resolution in the Customize Toolbar sheet. Converted to view-based `NSButton` items with fixed 32×32 frames.
+- **Toolbar customize sheet — Banner placeholder** — the Banner item showed as an empty dashed box when no server is connected. Now falls back to the built-in `Banner` asset (200×32) correctly.
+
+---
+
 ## Version 2.7 (Build 94)
 
 ### What's New
