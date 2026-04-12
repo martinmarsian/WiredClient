@@ -132,7 +132,7 @@
 	<key>NSPrincipalClass</key>
 	<string>WCApplication</string>
 	<key>SUFeedURL</key>
-	<string>https://wired.read-write.fr/wiredclient_cast.xml</string>
+	<string>https://raw.githubusercontent.com/martinmarsian/WiredClient/master/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>bFdWJy+UjxoodjtTUdX4bPiwAWd3dbsSfNiQd9NkPT8=</string>
 	<key>UTExportedTypeDeclarations</key>
