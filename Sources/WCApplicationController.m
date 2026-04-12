@@ -689,12 +689,7 @@ static WCApplicationController		*sharedController;
                                                                      updaterDelegate:self
                                                                   userDriverDelegate:nil];
 
-    // set the auto-update feed URL regarding to the selected configuration (Debug or Release)
-#ifdef WCConfigurationRelease
-    [_updaterController.updater setFeedURL:[NSURL URLWithString:@"https://wired.read-write.fr/sparkle/wiredclient_cast.xml"]];
-#else
-    [_updaterController.updater setFeedURL:[NSURL URLWithString:@"https://wired.read-write.fr/sparkle/wiredclient_debugcast.xml"]];
-#endif
+    // Feed URL is configured via SUFeedURL in Info.plist — no programmatic override needed.
 
     [_updaterController.updater setSendsSystemProfile:YES];
     [_updaterController.updater performSelector:@selector(checkForUpdatesInBackground) afterDelay:5.0f];
