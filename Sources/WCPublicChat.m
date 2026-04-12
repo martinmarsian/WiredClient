@@ -151,7 +151,7 @@ typedef enum _WCChatActivity				WCChatActivity;
 
     button = (NSButton *)[item view];
     image  = [[connection server] banner];
-    [button setImage:image ? image : [NSImage imageWithSystemSymbolName:@"globe" accessibilityDescription:nil]];
+    [button setImage:image ? image : [NSImage imageNamed:@"Banner"]];
 
     if(connection) {
         [item setLabel:[connection name]];
@@ -651,7 +651,7 @@ typedef enum _WCChatActivity				WCChatActivity;
         NSButton *button = [[[NSButton alloc] initWithFrame:NSMakeRect(0, 0, 180, 34)] autorelease];
         [button setButtonType:NSButtonTypeMomentaryChange];
         [button setBordered:NO];
-        [button setImage:[NSImage imageWithSystemSymbolName:@"globe" accessibilityDescription:nil]];
+        [button setImage:[NSImage imageNamed:@"Banner"]];
         [button setImageScaling:NSImageScaleProportionallyUpOrDown];
         [button setImagePosition:NSImageOnly];
         NSToolbarItem *item = [NSToolbarItem toolbarItemWithIdentifier:identifier
@@ -765,9 +765,15 @@ typedef enum _WCChatActivity				WCChatActivity;
 												 action:@selector(accounts:)];
  	}
 	else if([identifier isEqualToString:@"Banlist"]) {
+		NSButton *btn = [[[NSButton alloc] initWithFrame:NSMakeRect(0,0,32,32)] autorelease];
+		[btn setButtonType:NSButtonTypeMomentaryChange];
+		[btn setBordered:NO];
+		[btn setImage:[NSImage imageNamed:@"Banlist"]];
+		[btn setImageScaling:NSImageScaleProportionallyUpOrDown];
+		[btn setImagePosition:NSImageOnly];
 		return [NSToolbarItem toolbarItemWithIdentifier:identifier
 												   name:NSLS(@"Banlist", @"Banlist toolbar item")
-												content:[NSImage imageNamed:@"Banlist"]
+												content:btn
 												 target:self
 												 action:@selector(banlist:)];
 	}
@@ -779,9 +785,15 @@ typedef enum _WCChatActivity				WCChatActivity;
 												 action:@selector(reconnect:)];
 	}
 	else if([identifier isEqualToString:@"Disconnect"]) {
+		NSButton *btn = [[[NSButton alloc] initWithFrame:NSMakeRect(0,0,32,32)] autorelease];
+		[btn setButtonType:NSButtonTypeMomentaryChange];
+		[btn setBordered:NO];
+		[btn setImage:[NSImage imageNamed:@"Disconnect"]];
+		[btn setImageScaling:NSImageScaleProportionallyUpOrDown];
+		[btn setImagePosition:NSImageOnly];
 		return [NSToolbarItem toolbarItemWithIdentifier:identifier
 												   name:NSLS(@"Disconnect", @"Disconnect toolbar item")
-												content:[NSImage imageNamed:@"Disconnect"]
+												content:btn
 												 target:self
 												 action:@selector(disconnect:)];
 	}
