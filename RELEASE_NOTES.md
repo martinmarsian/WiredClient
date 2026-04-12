@@ -1,5 +1,23 @@
 # Wired Client — Release Notes
 
+## Version 2.7 (Build 100)
+
+### Bug Fixes (Build 100)
+
+- **Auto-Update (Sparkle)** — the update check now works correctly. The cached legacy feed URL (`wired.read-write.fr`) was still stored in the app's preferences domain and overrode the Info.plist value. The programmatic `setFeedURL:` override has been removed; Sparkle now reads the URL exclusively from Info.plist (`raw.githubusercontent.com/martinmarsian/WiredClient/master/appcast.xml`).
+- **Archive configuration** — the default Xcode scheme now correctly archives with the **Release** build configuration, ensuring the released binary uses the production bundle ID `fr.read-write.WiredClient` (not `fr.read-write.WiredClientDebug`).
+
+### Migration Note for Testers / Developers
+
+If you previously ran a **Debug build** of Wired Client, your bookmarks and preferences are stored under the debug bundle ID. To migrate your settings to the Release build, rename the preferences file before launching Release 100 for the first time:
+
+```bash
+cp ~/Library/Preferences/fr.read-write.WiredClientDebug.plist \
+   ~/Library/Preferences/fr.read-write.WiredClient.plist
+```
+
+---
+
 ## Version 2.7 (Build 98)
 
 ### Bug Fixes (Build 98)
