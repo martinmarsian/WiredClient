@@ -1,5 +1,13 @@
 # Wired Client — Release Notes
 
+## Version 2.7 (Build 98)
+
+### Bug Fixes (Build 98)
+
+- **Auto-Update feed** — the Sparkle update feed URL was pointing to the old `wired.read-write.fr` server. Updated to the GitHub raw URL (`raw.githubusercontent.com/martinmarsian/WiredClient/master/appcast.xml`) so "Check for Updates" works correctly.
+
+---
+
 ## Version 2.7 (Build 97)
 
 ### Bug Fixes (Build 97)
