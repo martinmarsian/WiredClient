@@ -1,5 +1,25 @@
 # Wired Client — Release Notes
 
+## Version 2.7 (Build 104)
+
+### What's New (Build 104)
+
+- **Split user list** — the user list panel is now divided into two independent sections: **Online** (top) and **Offline** (bottom), each with its own scrollbar. Both sections display a live user count in their header (e.g. „Online (3)" / „Offline (2)"). Online users are shown at full opacity; offline users remain grayed out at 40% opacity.
+
+---
+
+## Version 2.7 (Build 103)
+
+### What's New (Build 103)
+
+- **Offline user cache from server** — when logging into a Wired Server 2.5.8+ server, the client now receives a list of recently active users (`wired.user.known_users`) directly from the server. This ensures the offline user list is populated correctly even on a new installation or a different machine, without requiring admin access.
+
+### Bug Fixes (Build 103)
+
+- **MMTabBarView build fix** — resolved a linker error caused by Xcode 26 removing `libarclite_macosx.a`. Set `CLANG_LINK_OBJC_RUNTIME = NO` and `MACOSX_DEPLOYMENT_TARGET = 13.0` in the MMTabBarView build configurations.
+
+---
+
 ## Version 2.7 (Build 100)
 
 ### Bug Fixes (Build 100)
