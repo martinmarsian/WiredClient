@@ -1888,6 +1888,72 @@ typedef enum _WCChatFormat					WCChatFormat;
 
 
 
+- (void)wiredUserKnownUsers:(WIP7Message *)message {
+    // Only handle for the public chat; private chats don't maintain an offline user list
+    if([self chatID] != WCPublicChatID)
+        return;
+
+    NSString *login    = [message stringForName:@"wired.user.login"];
+    NSString *nick     = [message stringForName:@"wired.user.nick"];
+
+    if(!login || !nick)
+        return;
+
+    // Update NSUserDefaults cache directly (same format as _cacheKnownUser:)
+    NSString *key = [self _knownUsersCacheKey];
+    NSMutableArray *list = [[[NSUserDefaults standardUserDefaults] arrayForKey:key] mutableCopy];
+    if(!list)
+        list = [[NSMutableArray alloc] init];
+
+    BOOL found = NO;
+    for(NSUInteger i = 0; i < [list count]; i++) {
+        NSDictionary *entry = [list objectAtIndex:i];
+        if([[entry objectForKey:@"login"] isEqualToString:login]) {
+            [list replaceObjectAtIndex:i withObject:@{@"login": login, @"nick": nick}];
+            found = YES;
+            break;
+        }
+    }
+    if(!found)
+        [list addObject:@{@"login": login, @"nick": nick}];
+
+    [[NSUserDefaults standardUserDefaults] setObject:list forKey:key];
+    [list release];
+}
+
+
+
+- (void)wiredUserKnownUsersDone:(WIP7Message *)message {
+    if([self chatID] != WCPublicChatID)
+        return;
+
+    // Only add offline stubs after the online user list has been received
+    if(!_receivedUserList)
+        return;
+
+    NSString *key = [self _knownUsersCacheKey];
+    NSArray *list = [[NSUserDefaults standardUserDefaults] arrayForKey:key];
+
+    BOOL changed = NO;
+    for(NSDictionary *entry in list) {
+        NSString *login = [entry objectForKey:@"login"];
+        NSString *nick  = [entry objectForKey:@"nick"];
+        BOOL alreadyShown = NO;
+        for(WCUser *u in _shownUsers) {
+            if([[u login] isEqualToString:login]) { alreadyShown = YES; break; }
+        }
+        if(!alreadyShown) {
+            WCUser *offlineUser = [WCUser offlineUserWithNick:nick login:login connection:[self connection]];
+            [_shownUsers addObject:offlineUser];
+            changed = YES;
+        }
+    }
+
+    if(changed)
+        [_userListTableView reloadData];
+}
+
+
 
 
 
@@ -2171,7 +2237,9 @@ typedef enum _WCChatFormat					WCChatFormat;
 	[_connection addObserver:self selector:@selector(wiredChatUserBan:) messageName:@"wired.chat.user_ban"];
 	[_connection addObserver:self selector:@selector(wiredChatUserStatus:) messageName:@"wired.chat.user_status"];
 	[_connection addObserver:self selector:@selector(wiredChatUserIcon:) messageName:@"wired.chat.user_icon"];
-	
+	[_connection addObserver:self selector:@selector(wiredUserKnownUsers:) messageName:@"wired.user.known_users"];
+	[_connection addObserver:self selector:@selector(wiredUserKnownUsersDone:) messageName:@"wired.user.known_users.done"];
+
 	[self themeDidChange:[_connection theme]];
 }
 
