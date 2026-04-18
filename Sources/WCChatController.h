@@ -69,6 +69,10 @@ extern NSString * const WCUserPboardType;
 	IBOutlet NSTableColumn							*_iconTableColumn;
 	IBOutlet NSTableColumn							*_nickTableColumn;
 
+	NSTableView										*_offlineUserListTableView;
+	NSTextField										*_onlineHeaderLabel;
+	NSTextField										*_offlineHeaderLabel;
+
 	IBOutlet NSPanel								*_setTopicPanel;
 	IBOutlet NSTextView								*_setTopicTextView;
 

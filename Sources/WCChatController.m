@@ -120,6 +120,12 @@ typedef enum _WCChatFormat					WCChatFormat;
 - (void)_loadOfflineUsersFromCache;
 - (void)_removeOfflineUserWithLogin:(NSString *)login;
 
+- (void)_setupUserListSplitView;
+- (void)_updateUserListHeaders;
+- (WCUser *)_onlineUserAtIndex:(NSUInteger)index;
+- (WCUser *)_offlineUserAtIndex:(NSUInteger)index;
+- (NSView *)_makeCellViewForIdentifier:(NSString *)identifier tableView:(NSTableView *)tableView;
+
 @end
 
 
@@ -1007,6 +1013,189 @@ typedef enum _WCChatFormat					WCChatFormat;
         [_shownUsers removeObject:toRemove];
 }
 
+
+
+- (WCUser *)_onlineUserAtIndex:(NSUInteger)index {
+    NSUInteger count = 0;
+    for(WCUser *u in _shownUsers) {
+        if(![u isOffline]) {
+            if(count == index) return u;
+            count++;
+        }
+    }
+    return nil;
+}
+
+
+
+- (WCUser *)_offlineUserAtIndex:(NSUInteger)index {
+    NSUInteger count = 0;
+    for(WCUser *u in _shownUsers) {
+        if([u isOffline]) {
+            if(count == index) return u;
+            count++;
+        }
+    }
+    return nil;
+}
+
+
+
+- (void)_updateUserListHeaders {
+    NSUInteger onlineCount = 0, offlineCount = 0;
+    for(WCUser *u in _shownUsers) {
+        if([u isOffline]) offlineCount++;
+        else              onlineCount++;
+    }
+    [_onlineHeaderLabel  setStringValue:[NSString stringWithFormat:@"Online (%lu)",  (unsigned long)onlineCount]];
+    [_offlineHeaderLabel setStringValue:[NSString stringWithFormat:@"Offline (%lu)", (unsigned long)offlineCount]];
+}
+
+
+
+- (NSView *)_makeCellViewForIdentifier:(NSString *)identifier tableView:(NSTableView *)tableView {
+    BOOL isLarge  = [tableView rowHeight] > 20.0;
+    CGFloat h     = [tableView rowHeight];
+    CGFloat imgSz = isLarge ? 28.0 : 14.0;
+    CGFloat textX = isLarge ? 36.0 : 20.0;
+
+    WCUserTableCellView *cell = [[[WCUserTableCellView alloc] initWithFrame:NSMakeRect(0, 0, 200, h)] autorelease];
+    [cell setIdentifier:identifier];
+
+    // Icon image view
+    NSImageView *iv = [[[NSImageView alloc] initWithFrame:NSMakeRect(2, (h - imgSz) / 2.0, imgSz, imgSz)] autorelease];
+    [iv setImageScaling:NSImageScaleProportionallyUpOrDown];
+    [iv setAutoresizingMask:NSViewMinYMargin | NSViewMaxYMargin];
+    [cell addSubview:iv];
+    [cell setImageView:iv];
+
+    // Nick text field
+    NSTextField *nick = [[[NSTextField alloc] initWithFrame:NSMakeRect(textX, isLarge ? h / 2.0 : 1.0, 160, isLarge ? 15.0 : h - 2.0)] autorelease];
+    [nick setBordered:NO];
+    [nick setEditable:NO];
+    [nick setDrawsBackground:NO];
+    [nick setFont:[NSFont systemFontOfSize:isLarge ? 13.0 : 12.0]];
+    [nick setAutoresizingMask:NSViewWidthSizable | NSViewMinYMargin];
+    [cell addSubview:nick];
+    cell.nickTextField = nick;
+
+    // Status text field (always present; hidden when empty)
+    NSTextField *status = [[[NSTextField alloc] initWithFrame:NSMakeRect(textX, 2.0, 160, isLarge ? 13.0 : 0.0)] autorelease];
+    [status setBordered:NO];
+    [status setEditable:NO];
+    [status setDrawsBackground:NO];
+    [status setFont:[NSFont systemFontOfSize:11.0]];
+    [status setTextColor:[NSColor secondaryLabelColor]];
+    [status setAutoresizingMask:NSViewWidthSizable | NSViewMaxYMargin];
+    if(isLarge) [cell addSubview:status];
+    cell.statusTextField = status;
+
+    return cell;
+}
+
+
+
+- (void)_setupUserListSplitView {
+    NSView   *container = [_userListScrollView superview];
+    NSRect    frame     = [_userListScrollView frame];
+    CGFloat   headerH   = 18.0;
+    CGFloat   halfH     = floor(frame.size.height / 2.0);
+    CGFloat   w         = frame.size.width;
+
+    // Outer split view (horizontal divider = top/bottom).
+    // Pinned to _userListScrollView via constraints so it tracks the scroll
+    // view's edges exactly (including when the user drags the list width).
+    NSSplitView *split = [[[NSSplitView alloc] initWithFrame:frame] autorelease];
+    [split setVertical:NO];
+    [split setDividerStyle:NSSplitViewDividerStyleThin];
+    [split setTranslatesAutoresizingMaskIntoConstraints:NO];
+
+    // ── Top pane: Online ─────────────────────────────────────────────────
+    NSView *topPane = [[[NSView alloc] initWithFrame:NSMakeRect(0, 0, w, halfH)] autorelease];
+    [topPane setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+
+    _onlineHeaderLabel = [[[NSTextField alloc] initWithFrame:NSMakeRect(6, halfH - headerH, w - 8, headerH)] autorelease];
+    [_onlineHeaderLabel setEditable:NO];
+    [_onlineHeaderLabel setBordered:NO];
+    [_onlineHeaderLabel setDrawsBackground:NO];
+    [_onlineHeaderLabel setFont:[NSFont systemFontOfSize:10.0 weight:NSFontWeightSemibold]];
+    [_onlineHeaderLabel setTextColor:[NSColor secondaryLabelColor]];
+    [_onlineHeaderLabel setAutoresizingMask:NSViewWidthSizable | NSViewMinYMargin];
+    [topPane addSubview:_onlineHeaderLabel];
+
+    // Extract _userListTableView from the LNScrollView (which can misbehave when
+    // reparented) and place it in a fresh plain NSScrollView inside topPane.
+    [_userListTableView retain];
+    [_userListTableView removeFromSuperview];
+
+    NSScrollView *onlineScroll = [[[NSScrollView alloc] initWithFrame:NSMakeRect(0, 0, w, halfH - headerH)] autorelease];
+    [onlineScroll setDocumentView:_userListTableView];
+    [_userListTableView release];
+    [onlineScroll setHasVerticalScroller:YES];
+    [onlineScroll setAutohidesScrollers:YES];
+    [onlineScroll setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+    [topPane addSubview:onlineScroll];
+
+    // The original LNScrollView is now empty; hide it so it doesn't overlap.
+    [_userListScrollView setHidden:YES];
+
+    // ── Bottom pane: Offline ──────────────────────────────────────────────
+    NSView *bottomPane = [[[NSView alloc] initWithFrame:NSMakeRect(0, 0, w, halfH)] autorelease];
+    [bottomPane setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+
+    _offlineHeaderLabel = [[[NSTextField alloc] initWithFrame:NSMakeRect(6, halfH - headerH, w - 8, headerH)] autorelease];
+    [_offlineHeaderLabel setEditable:NO];
+    [_offlineHeaderLabel setBordered:NO];
+    [_offlineHeaderLabel setDrawsBackground:NO];
+    [_offlineHeaderLabel setFont:[NSFont systemFontOfSize:10.0 weight:NSFontWeightSemibold]];
+    [_offlineHeaderLabel setTextColor:[NSColor secondaryLabelColor]];
+    [_offlineHeaderLabel setAutoresizingMask:NSViewWidthSizable | NSViewMinYMargin];
+    [bottomPane addSubview:_offlineHeaderLabel];
+
+    // Offline table view + scroll view
+    _offlineUserListTableView = [[NSTableView alloc] initWithFrame:NSZeroRect];
+    [_offlineUserListTableView setColumnAutoresizingStyle:NSTableViewLastColumnOnlyAutoresizingStyle];
+    [_offlineUserListTableView setAllowsEmptySelection:YES];
+    [_offlineUserListTableView setAllowsMultipleSelection:NO];
+    [_offlineUserListTableView setHeaderView:nil];
+    [_offlineUserListTableView setRowHeight:[_userListTableView rowHeight]];
+    [_offlineUserListTableView setSelectionHighlightStyle:NSTableViewSelectionHighlightStyleRegular];
+    [_offlineUserListTableView setTarget:self];
+    [_offlineUserListTableView setDoubleAction:@selector(sendPrivateMessage:)];
+    [_offlineUserListTableView setMenu:_userListMenu];
+    [_offlineUserListTableView setDataSource:self];
+    [_offlineUserListTableView setDelegate:self];
+
+    NSTableColumn *offlineNickCol = [[[NSTableColumn alloc] initWithIdentifier:@"WCOfflineNick"] autorelease];
+    [offlineNickCol setEditable:NO];
+    [_offlineUserListTableView addTableColumn:offlineNickCol];
+    [_offlineUserListTableView sizeLastColumnToFit];
+
+    NSScrollView *offlineScroll = [[[NSScrollView alloc] initWithFrame:NSMakeRect(0, 0, w, halfH - headerH)] autorelease];
+    [offlineScroll setDocumentView:_offlineUserListTableView];
+    [offlineScroll setHasVerticalScroller:YES];
+    [offlineScroll setAutohidesScrollers:YES];
+    [offlineScroll setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+    [bottomPane addSubview:offlineScroll];
+
+    [split addSubview:topPane];
+    [split addSubview:bottomPane];
+
+    [container addSubview:split];
+
+    // Pin split view to the exact edges of the (now hidden) _userListScrollView.
+    // This ensures it fills the same area and resizes correctly when the user
+    // drags the main chat/user-list divider.
+    [[split topAnchor]      constraintEqualToAnchor:[_userListScrollView topAnchor]].active      = YES;
+    [[split bottomAnchor]   constraintEqualToAnchor:[_userListScrollView bottomAnchor]].active   = YES;
+    [[split leadingAnchor]  constraintEqualToAnchor:[_userListScrollView leadingAnchor]].active  = YES;
+    [[split trailingAnchor] constraintEqualToAnchor:[_userListScrollView trailingAnchor]].active = YES;
+
+    [self _updateUserListHeaders];
+}
+
+
+
 #pragma mark -
 
 - (NSDictionary *)_currentTheme {
@@ -1301,9 +1490,10 @@ typedef enum _WCChatFormat					WCChatFormat;
         [self hideUserList:self];
 	
 	[self _updatePreferences];
+    [self _setupUserListSplitView];
 }
 
-    
+
 
 
 
@@ -1400,7 +1590,7 @@ typedef enum _WCChatFormat					WCChatFormat;
     
     if(_receivedUserList) {
         [_userListTableView setNeedsDisplay:YES];
-        [_userListTableView reloadData];
+        [_userListTableView reloadData]; [_offlineUserListTableView reloadData]; [self _updateUserListHeaders];
     }
     
     [_chatTableView reloadData];
@@ -1418,7 +1608,7 @@ typedef enum _WCChatFormat					WCChatFormat;
 	[_users removeAllObjects];
 	[_shownUsers removeAllObjects];
     
-	[_userListTableView reloadData];
+	[_userListTableView reloadData]; [_offlineUserListTableView reloadData]; [self _updateUserListHeaders];
 }
 
 
@@ -1458,7 +1648,7 @@ typedef enum _WCChatFormat					WCChatFormat;
 
 
 - (void)chatUsersDidChange:(NSNotification *)notification {
-	[_userListTableView reloadData];
+	[_userListTableView reloadData]; [_offlineUserListTableView reloadData]; [self _updateUserListHeaders];
 }
 
 
@@ -1491,7 +1681,7 @@ typedef enum _WCChatFormat					WCChatFormat;
 		}
 		
 		_receivedUserList = YES;
-        [_userListTableView reloadData];
+        [_userListTableView reloadData]; [_offlineUserListTableView reloadData]; [self _updateUserListHeaders];
 	}
 	else if([[message name] isEqualToString:@"wired.chat.topic"]) {
 		topic = [WCTopic topicWithMessage:message];
@@ -1556,7 +1746,7 @@ typedef enum _WCChatFormat					WCChatFormat;
 	[_shownUsers addObject:user];
 	[_users setObject:user forKey:[NSNumber numberWithUnsignedInt:[user userID]]];
 
-	[_userListTableView reloadData];
+	[_userListTableView reloadData]; [_offlineUserListTableView reloadData]; [self _updateUserListHeaders];
     
 	if([[[WCSettings settings] eventWithTag:WCEventsUserJoined] boolForKey:WCEventsPostInChat])
 		[self _printUserJoin:user];
@@ -1599,7 +1789,7 @@ typedef enum _WCChatFormat					WCChatFormat;
 		[_shownUsers addObject:offlineUser];
 	}
 
-	[_userListTableView reloadData];
+	[_userListTableView reloadData]; [_offlineUserListTableView reloadData]; [self _updateUserListHeaders];
 }
 
 
@@ -1706,7 +1896,7 @@ typedef enum _WCChatFormat					WCChatFormat;
 		[_shownUsers addObject:offlineUser];
 	}
 
-	[_userListTableView reloadData];
+	[_userListTableView reloadData]; [_offlineUserListTableView reloadData]; [self _updateUserListHeaders];
 }
 
 
@@ -1746,7 +1936,7 @@ typedef enum _WCChatFormat					WCChatFormat;
 		[_shownUsers addObject:offlineUser];
 	}
 
-	[_userListTableView reloadData];
+	[_userListTableView reloadData]; [_offlineUserListTableView reloadData]; [self _updateUserListHeaders];
 }
 
 
@@ -1786,7 +1976,7 @@ typedef enum _WCChatFormat					WCChatFormat;
 	[_shownUsers removeObject:victim];
 	[_users removeObjectForKey:[NSNumber numberWithInt:victimUserID]];
 
-	[_userListTableView reloadData];
+	[_userListTableView reloadData]; [_offlineUserListTableView reloadData]; [self _updateUserListHeaders];
 }
 
 
@@ -1950,7 +2140,7 @@ typedef enum _WCChatFormat					WCChatFormat;
     }
 
     if(changed)
-        [_userListTableView reloadData];
+        [_userListTableView reloadData]; [_offlineUserListTableView reloadData]; [self _updateUserListHeaders];
 }
 
 
@@ -2294,12 +2484,17 @@ typedef enum _WCChatFormat					WCChatFormat;
 - (WCUser *)selectedUser {
 	NSInteger		row;
 	
-	row = [_userListTableView selectedRow];
+	// Check offline table first
+	row = [_offlineUserListTableView selectedRow];
+	if(row >= 0)
+		return [self _offlineUserAtIndex:row];
 	
+	// Check online table
+	row = [_userListTableView selectedRow];
 	if(row < 0)
 		return NULL;
 	
-	return [_shownUsers objectAtIndex:row];
+	return [self _onlineUserAtIndex:row];
 }
 
 
@@ -2333,7 +2528,7 @@ typedef enum _WCChatFormat					WCChatFormat;
 
 
 - (WCUser *)userAtIndex:(NSUInteger)index {
-	return [_shownUsers objectAtIndex:index];
+    return [self _onlineUserAtIndex:index];
 }
 
 
@@ -2595,7 +2790,7 @@ typedef enum _WCChatFormat					WCChatFormat;
 	[[WCSettings settings] addObject:ignore toArrayForKey:WCIgnores];
 	[[NSNotificationCenter defaultCenter] postNotificationName:WCIgnoresDidChangeNotification];
 	
-	[_userListTableView reloadData];
+	[_userListTableView reloadData]; [_offlineUserListTableView reloadData]; [self _updateUserListHeaders];
 }
 
 
@@ -2622,7 +2817,7 @@ typedef enum _WCChatFormat					WCChatFormat;
 	[[WCSettings settings] setObject:array forKey:WCIgnores];
 	[[NSNotificationCenter defaultCenter] postNotificationName:WCIgnoresDidChangeNotification];
 	
-	[_userListTableView reloadData];
+	[_userListTableView reloadData]; [_offlineUserListTableView reloadData]; [self _updateUserListHeaders];
 }
 
 
@@ -2672,11 +2867,19 @@ typedef enum _WCChatFormat					WCChatFormat;
 #pragma mark -
 
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView {
-    if (tableView == _userListTableView)
-        return [_shownUsers count];
-    else if (tableView == _chatTableView)
+    if(tableView == _userListTableView) {
+        NSInteger count = 0;
+        for(WCUser *u in _shownUsers) if(![u isOffline]) count++;
+        return count;
+    }
+    else if(tableView == _offlineUserListTableView) {
+        NSInteger count = 0;
+        for(WCUser *u in _shownUsers) if([u isOffline]) count++;
+        return count;
+    }
+    else if(tableView == _chatTableView)
         return [_messages count];
-    
+
     return 0;
 }
 
@@ -2696,11 +2899,33 @@ typedef enum _WCChatFormat					WCChatFormat;
     WCUser                  *user;
     NSColor                 *timestampColor;
     
-    if(tableView == _userListTableView) {
+    if(tableView == _offlineUserListTableView) {
+        user = [self _offlineUserAtIndex:row];
+        if(!user) return nil;
+
+        NSString *identifier = ([tableView rowHeight] > 20.0)
+            ? ([[user status] length] > 0 ? @"WCOfflineLargeWithStatus" : @"WCOfflineLarge")
+            : ([[user status] length] > 0 ? @"WCOfflineSmallWithStatus" : @"WCOfflineSmall");
+
+        WCUserTableCellView *cellView = (WCUserTableCellView *)[tableView makeViewWithIdentifier:identifier owner:self];
+        if(!cellView)
+            cellView = (WCUserTableCellView *)[self _makeCellViewForIdentifier:identifier tableView:tableView];
+
+        cellView.nickTextField.textColor = [NSColor labelColor];
+        NSDictionary *attrs = @{ NSStrikethroughStyleAttributeName: @(NSUnderlinePatternSolid | NSUnderlineStyleNone) };
+        cellView.nickTextField.attributedStringValue = [NSAttributedString attributedStringWithString:[user nick] attributes:attrs];
+        cellView.nickTextField.toolTip  = [user nick];
+        cellView.statusTextField.stringValue = [user status] ?: @"";
+        cellView.statusTextField.toolTip     = [user status] ?: @"";
+        cellView.imageView.image = [user iconWithIdleTint:NO];
+        cellView.alphaValue = 0.4;
+        return cellView;
+    }
+    else if(tableView == _userListTableView) {
         WCUserTableCellView     *cellView;
-        
+
         theme       = [self _currentTheme];
-        user        = [self userAtIndex:row];
+        user        = [self _onlineUserAtIndex:row];
         
         switch([[theme objectForKey:WCThemesUserListIconSize] integerValue]) {
             case WCThemesUserListIconSizeLarge: {
