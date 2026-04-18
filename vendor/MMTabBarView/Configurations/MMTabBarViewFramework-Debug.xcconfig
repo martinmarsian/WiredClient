@@ -1,2 +1,3 @@
 #include "Debug.xcconfig"
 #include "MMTabBarViewFramework-Base.xcconfig"
+CLANG_LINK_OBJC_RUNTIME = NO
