@@ -1,5 +1,19 @@
 # Wired Client — Release Notes
 
+## Version 2.7 (Build 105)
+
+### What's New (Build 105)
+
+- **End-to-end encryption for offline messages** — when sending a message to an offline user whose public key is known, the message body is encrypted client-side using RSA-2048 + AES-GCM (`kSecKeyAlgorithmRSAEncryptionOAEPSHA256AESGCM`). The ciphertext is sent in `wired.message.offline_message_ciphertext`; the server never sees the plaintext. On delivery, the recipient's client decrypts the message using the private key stored in the iCloud Keychain and displays the plaintext as a normal private message.
+- **RSA key pair management** — a 2048-bit RSA key pair is generated automatically on first use, per server. The private key is stored in the iCloud Keychain with `kSecAttrSynchronizable = YES`, making it available across all of the user's devices. The public key (DER) is registered with the server via `wired.message.set_offline_public_key` and distributed to other users via `wired.user.known_users`.
+- **Protocol 2.6** — the client now announces protocol version `2.6`, matching Wired Server 2.6.x. This eliminates the P7 compatibility-check round-trip overhead for users on a current server.
+
+### Bug Fixes (Build 105)
+
+- Corrected the Security framework algorithm constant from the non-existent `kSecKeyAlgorithmRSAEncryptionOAEPSHA256AESManifold` to the correct `kSecKeyAlgorithmRSAEncryptionOAEPSHA256AESGCM`.
+
+---
+
 ## Version 2.7 (Build 104)
 
 ### What's New (Build 104)
