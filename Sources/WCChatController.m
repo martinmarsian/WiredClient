@@ -118,7 +118,7 @@ typedef enum _WCChatFormat					WCChatFormat;
 
 - (void)_cacheKnownUser:(WCUser *)user;
 - (void)_loadOfflineUsersFromCache;
-- (void)_removeOfflineUserWithLogin:(NSString *)login;
+- (void)_removeOfflineUserWithNick:(NSString *)nick;
 
 - (void)_setupUserListSplitView;
 - (void)_updateUserListHeaders;
@@ -960,17 +960,28 @@ typedef enum _WCChatFormat					WCChatFormat;
     NSMutableArray  *list = [[[NSUserDefaults standardUserDefaults] arrayForKey:key] mutableCopy];
     if(!list) list = [[NSMutableArray alloc] init];
 
+    NSString        *status   = [user status] ? [user status] : @"";
+    NSData          *iconData = [[user icon] TIFFRepresentation];
+
+    NSMutableDictionary *newEntry = [NSMutableDictionary dictionaryWithObjectsAndKeys:
+                                     nick,   @"nick",
+                                     login,  @"login",
+                                     status, @"status",
+                                     nil];
+    if(iconData)
+        [newEntry setObject:iconData forKey:@"icon"];
+
     BOOL found = NO;
     for(NSUInteger i = 0; i < [list count]; i++) {
         NSDictionary *entry = [list objectAtIndex:i];
         if([[entry objectForKey:@"login"] isEqualToString:login]) {
-            [list replaceObjectAtIndex:i withObject:@{@"nick": nick, @"login": login}];
+            [list replaceObjectAtIndex:i withObject:newEntry];
             found = YES;
             break;
         }
     }
     if(!found)
-        [list addObject:@{@"nick": nick, @"login": login}];
+        [list addObject:newEntry];
 
     [[NSUserDefaults standardUserDefaults] setObject:list forKey:key];
     [list release];
@@ -988,26 +999,29 @@ typedef enum _WCChatFormat					WCChatFormat;
 
     for(id entry in list) {
         if(![entry isKindOfClass:[NSDictionary class]]) continue;
-        NSString *login = [entry objectForKey:@"login"];
-        NSString *nick  = [entry objectForKey:@"nick"];
-        if(!login || !nick) continue;
+        NSString *token    = [entry objectForKey:@"login"]; // opaque token stored in "login" slot
+        NSString *nick     = [entry objectForKey:@"nick"];
+        NSString *status   = [entry objectForKey:@"status"];
+        NSData   *iconData = [entry objectForKey:@"icon"];
+        if(!token || !nick) continue;
 
-        // Skip users that are currently online
+        // Skip if an online user with the same nick is already shown
         BOOL online = NO;
         for(WCUser *u in _shownUsers) {
-            if(![u isOffline] && [[u login] isEqualToString:login]) { online = YES; break; }
+            if(![u isOffline] && [[u nick] isEqualToString:nick]) { online = YES; break; }
         }
         if(online) continue;
 
-        WCUser *offlineUser = [WCUser offlineUserWithNick:nick login:login connection:[self connection]];
+        NSImage *icon = iconData ? [[[NSImage alloc] initWithData:iconData] autorelease] : nil;
+        WCUser *offlineUser = [WCUser offlineUserWithNick:nick login:token status:status icon:icon connection:[self connection]];
         [_shownUsers addObject:offlineUser];
     }
 }
 
-- (void)_removeOfflineUserWithLogin:(NSString *)login {
+- (void)_removeOfflineUserWithNick:(NSString *)nick {
     WCUser *toRemove = nil;
     for(WCUser *u in _shownUsers) {
-        if(u.isOffline && [u.login isEqualToString:login]) { toRemove = u; break; }
+        if(u.isOffline && [u.nick isEqualToString:nick]) { toRemove = u; break; }
     }
     if(toRemove)
         [_shownUsers removeObject:toRemove];
@@ -1741,7 +1755,7 @@ typedef enum _WCChatFormat					WCChatFormat;
 	user = [WCUser userWithMessage:message connection:[self connection]];
 
 	[self _cacheKnownUser:user];
-	[self _removeOfflineUserWithLogin:[user login]];
+	[self _removeOfflineUserWithNick:[user nick]];
 
 	[_shownUsers addObject:user];
 	[_users setObject:user forKey:[NSNumber numberWithUnsignedInt:[user userID]]];
@@ -1785,7 +1799,7 @@ typedef enum _WCChatFormat					WCChatFormat;
 
 	// Add offline stub so the user remains visible (grayed out) for messaging
 	if([self chatID] == WCPublicChatID && [user login] && [user nick]) {
-		WCUser *offlineUser = [WCUser offlineUserWithNick:[user nick] login:[user login] connection:[self connection]];
+		WCUser *offlineUser = [WCUser offlineUserWithNick:[user nick] login:[user login] status:[user status] icon:[user icon] connection:[self connection]];
 		[_shownUsers addObject:offlineUser];
 	}
 
@@ -1892,7 +1906,7 @@ typedef enum _WCChatFormat					WCChatFormat;
 	[_users removeObjectForKey:[NSNumber numberWithInt:victimUserID]];
 
 	if([self chatID] == WCPublicChatID && [victim login] && [victim nick]) {
-		WCUser *offlineUser = [WCUser offlineUserWithNick:[victim nick] login:[victim login] connection:[self connection]];
+		WCUser *offlineUser = [WCUser offlineUserWithNick:[victim nick] login:[victim login] status:[victim status] icon:[victim icon] connection:[self connection]];
 		[_shownUsers addObject:offlineUser];
 	}
 
@@ -1932,7 +1946,7 @@ typedef enum _WCChatFormat					WCChatFormat;
 	[_users removeObjectForKey:[NSNumber numberWithInt:victimUserID]];
 
 	if([self chatID] == WCPublicChatID && [victim login] && [victim nick]) {
-		WCUser *offlineUser = [WCUser offlineUserWithNick:[victim nick] login:[victim login] connection:[self connection]];
+		WCUser *offlineUser = [WCUser offlineUserWithNick:[victim nick] login:[victim login] status:[victim status] icon:[victim icon] connection:[self connection]];
 		[_shownUsers addObject:offlineUser];
 	}
 
@@ -2083,13 +2097,37 @@ typedef enum _WCChatFormat					WCChatFormat;
     if([self chatID] != WCPublicChatID)
         return;
 
-    NSString *login    = [message stringForName:@"wired.user.login"];
+    // New servers send an opaque token; old servers send wired.user.login directly.
+    // We use whichever is available as the stable cache key.
+    NSString *token    = [message stringForName:@"wired.message.offline_sender_token"];
+    if(!token || [token length] == 0)
+        token = [message stringForName:@"wired.user.login"]; // legacy fallback for old servers
     NSString *nick     = [message stringForName:@"wired.user.nick"];
+    NSString *status   = [message stringForName:@"wired.user.status"];
+    NSData   *iconData = [message dataForName:@"wired.user.icon"];
+    NSData   *pubKey   = [message dataForName:@"wired.message.offline_public_key"];
 
-    if(!login || !nick)
+    if(!token || !nick)
         return;
 
-    // Update NSUserDefaults cache directly (same format as _cacheKnownUser:)
+    if(status && [status length] > 128)
+        status = [status substringToIndex:128];
+    if(iconData && [iconData length] > 16384)
+        iconData = nil;
+    if(pubKey && [pubKey length] > 1024)
+        pubKey = nil;
+
+    // Build cache entry with full profile (+ E2E public key if provided by server)
+    NSMutableDictionary *newEntry = [NSMutableDictionary dictionaryWithObjectsAndKeys:
+                                     token,                    @"login",
+                                     nick,                     @"nick",
+                                     status ? status : @"",    @"status",
+                                     nil];
+    if(iconData)
+        [newEntry setObject:iconData forKey:@"icon"];
+    if(pubKey)
+        [newEntry setObject:pubKey forKey:@"pubkey"];
+
     NSString *key = [self _knownUsersCacheKey];
     NSMutableArray *list = [[[NSUserDefaults standardUserDefaults] arrayForKey:key] mutableCopy];
     if(!list)
@@ -2098,14 +2136,14 @@ typedef enum _WCChatFormat					WCChatFormat;
     BOOL found = NO;
     for(NSUInteger i = 0; i < [list count]; i++) {
         NSDictionary *entry = [list objectAtIndex:i];
-        if([[entry objectForKey:@"login"] isEqualToString:login]) {
-            [list replaceObjectAtIndex:i withObject:@{@"login": login, @"nick": nick}];
+        if([[entry objectForKey:@"login"] isEqualToString:token]) {
+            [list replaceObjectAtIndex:i withObject:newEntry];
             found = YES;
             break;
         }
     }
     if(!found)
-        [list addObject:@{@"login": login, @"nick": nick}];
+        [list addObject:newEntry];
 
     [[NSUserDefaults standardUserDefaults] setObject:list forKey:key];
     [list release];
@@ -2126,14 +2164,20 @@ typedef enum _WCChatFormat					WCChatFormat;
 
     BOOL changed = NO;
     for(NSDictionary *entry in list) {
-        NSString *login = [entry objectForKey:@"login"];
-        NSString *nick  = [entry objectForKey:@"nick"];
+        NSString *token    = [entry objectForKey:@"login"]; // opaque token stored in "login" slot
+        NSString *nick     = [entry objectForKey:@"nick"];
+        NSString *status   = [entry objectForKey:@"status"];
+        NSData   *iconData = [entry objectForKey:@"icon"];
+        if(!token || !nick) continue;
+        // Skip if an online user with the same nick is already in the list
         BOOL alreadyShown = NO;
         for(WCUser *u in _shownUsers) {
-            if([[u login] isEqualToString:login]) { alreadyShown = YES; break; }
+            if(![u isOffline] && [[u nick] isEqualToString:nick]) { alreadyShown = YES; break; }
+            if([u isOffline]  && [[u login] isEqualToString:token]) { alreadyShown = YES; break; }
         }
         if(!alreadyShown) {
-            WCUser *offlineUser = [WCUser offlineUserWithNick:nick login:login connection:[self connection]];
+            NSImage *icon = iconData ? [[[NSImage alloc] initWithData:iconData] autorelease] : nil;
+            WCUser *offlineUser = [WCUser offlineUserWithNick:nick login:token status:status icon:icon connection:[self connection]];
             [_shownUsers addObject:offlineUser];
             changed = YES;
         }

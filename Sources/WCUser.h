@@ -55,6 +55,7 @@
 
 + (id)userWithMessage:(WIP7Message *)message connection:(WCServerConnection *)connection;
 + (id)offlineUserWithNick:(NSString *)nick login:(NSString *)login connection:(WCServerConnection *)connection;
++ (id)offlineUserWithNick:(NSString *)nick login:(NSString *)login status:(NSString *)status icon:(NSImage *)icon connection:(WCServerConnection *)connection;
 
 - (void)setIdle:(BOOL)value;
 - (void)setNick:(NSString *)nick;

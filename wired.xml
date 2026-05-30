@@ -3,7 +3,7 @@
 			 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 			 xsi:schemaLocation="http://wired.read-write.fr/html/p7-specification.xsd"
 			 name="Wired"
-			 version="2.0b55">
+			 version="2.6">
 	<p7:documentation>
 		TBD
 		
@@ -309,6 +309,31 @@
 		<p7:field name="wired.message.offline_sender_nick" type="string" id="5003" version="2.0">
 			<p7:documentation>
 				The nick of the sender of a delivered offline message.
+			</p7:documentation>
+		</p7:field>
+		<p7:field name="wired.message.offline_sender_token" type="string" id="5004" version="2.0">
+			<p7:documentation>
+				An opaque, stable token that identifies the sender of an offline message without
+				revealing their login name. Used as a conversation key by the client.
+			</p7:documentation>
+		</p7:field>
+		<p7:field name="wired.message.offline_recipient_token" type="string" id="5005" version="2.0">
+			<p7:documentation>
+				An opaque token identifying the recipient of an offline message. The server
+				resolves this token to the actual login internally.
+			</p7:documentation>
+		</p7:field>
+		<p7:field name="wired.message.offline_public_key" type="data" id="5006" version="2.0">
+			<p7:documentation>
+				RSA-2048 public key in PKCS#1 DER format used for end-to-end encryption of
+				offline messages. Clients register this key with set_offline_public_key after
+				login. The server distributes it to potential senders via known_users.
+			</p7:documentation>
+		</p7:field>
+		<p7:field name="wired.message.offline_message_ciphertext" type="data" id="5007" version="2.0">
+			<p7:documentation>
+				Hybrid-encrypted offline message (RSA-OAEP-SHA256/AES-256). When present the
+				wired.message.message field contains only a placeholder for legacy clients.
 			</p7:documentation>
 		</p7:field>
 
@@ -1595,6 +1620,27 @@
 			<p7:parameter field="wired.transaction" version="2.0" />
 		</p7:message>
 
+		<p7:message name="wired.user.known_users" id="3011" version="2.0">
+			<p7:documentation>
+				Sent by the server after login for each user account that has been active within
+				the last 30 days. Allows clients to populate their offline-user cache without
+				requiring admin privileges. The login is replaced by an opaque token to protect
+				user privacy. One message per known user, followed by wired.user.known_users.done.
+				Status, icon and public key are optional and reflect the user's last known values.
+			</p7:documentation>
+			<p7:parameter field="wired.message.offline_sender_token" use="required" version="2.0" />
+			<p7:parameter field="wired.user.nick" use="required" version="2.0" />
+			<p7:parameter field="wired.user.status" version="2.0" />
+			<p7:parameter field="wired.user.icon" version="2.0" />
+			<p7:parameter field="wired.message.offline_public_key" version="2.0" />
+		</p7:message>
+
+		<p7:message name="wired.user.known_users.done" id="3012" version="2.0">
+			<p7:documentation>
+				Signals the end of the wired.user.known_users list.
+			</p7:documentation>
+		</p7:message>
+
 		<p7:message name="wired.chat.join_chat" id="4000" version="2.0">
 			<p7:documentation>
 				Join chat message.
@@ -1858,18 +1904,38 @@
 		<p7:message name="wired.message.send_offline_message" id="5004" version="2.0">
 			<p7:documentation>
 				Send a private message to a user who may be offline. The message is stored on the
-				server and delivered automatically when the recipient next logs in.
+				server and delivered automatically when the recipient next logs in. New clients
+				address the recipient by token (offline_recipient_token) to protect privacy.
+				Legacy clients may use offline_recipient (login) as a fallback. When E2E encryption
+				is supported, offline_message_ciphertext carries the encrypted payload and
+				wired.message.message is set to a legacy-client placeholder.
 			</p7:documentation>
 			<p7:parameter field="wired.transaction" version="2.0" />
-			<p7:parameter field="wired.message.offline_recipient" use="required" version="2.0" />
+			<p7:parameter field="wired.message.offline_recipient_token" version="2.0" />
+			<p7:parameter field="wired.message.offline_recipient" version="2.0" />
 			<p7:parameter field="wired.message.message" use="required" version="2.0" />
+			<p7:parameter field="wired.message.offline_message_ciphertext" version="2.0" />
 		</p7:message>
 		<p7:message name="wired.message.offline_message_delivered" id="5005" version="2.0">
 			<p7:documentation>
-				A stored offline message being delivered to the recipient upon login.
+				A stored offline message being delivered to the recipient upon login. Contains an
+				opaque sender token (not login) and the sender nick for display. When the message
+				was sent encrypted, offline_message_ciphertext carries the ciphertext and
+				wired.message.message contains a placeholder.
 			</p7:documentation>
 			<p7:parameter field="wired.message.offline_sender_nick" use="required" version="2.0" />
+			<p7:parameter field="wired.message.offline_sender_token" use="required" version="2.0" />
 			<p7:parameter field="wired.message.message" use="required" version="2.0" />
+			<p7:parameter field="wired.message.offline_message_ciphertext" version="2.0" />
+		</p7:message>
+		<p7:message name="wired.message.set_offline_public_key" id="5006" version="2.0">
+			<p7:documentation>
+				Sent by the client after login to register an RSA-2048 public key for end-to-end
+				encryption of offline messages. The server stores the key per account and
+				distributes it to potential senders via wired.user.known_users.
+			</p7:documentation>
+			<p7:parameter field="wired.transaction" version="2.0" />
+			<p7:parameter field="wired.message.offline_public_key" use="required" version="2.0" />
 		</p7:message>
 
 		<p7:message name="wired.board.get_boards" id="6000" version="2.0">
@@ -3639,7 +3705,10 @@
 				if [field:wired.account.message.send_messages] is not set for the user's account.
 
 				[message:wired.error] should be replied with [enum:wired.error.account_not_found]
-				if the recipient login does not exist on the server.
+				if the recipient token cannot be resolved to a known account.
+
+				[message:wired.error] should be replied with [enum:wired.error.internal_error]
+				if the recipient's message queue is full (limit: 50 pending messages).
 
 				Otherwise, [message:wired.okay] should be replied. The message will be delivered
 				to the recipient as [message:wired.message.offline_message_delivered] upon their next login.

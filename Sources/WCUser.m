@@ -166,10 +166,16 @@
 
 
 + (id)offlineUserWithNick:(NSString *)nick login:(NSString *)login connection:(WCServerConnection *)connection {
+	return [self offlineUserWithNick:nick login:login status:nil icon:nil connection:connection];
+}
+
++ (id)offlineUserWithNick:(NSString *)nick login:(NSString *)login status:(NSString *)status icon:(NSImage *)icon connection:(WCServerConnection *)connection {
 	WCUser *user = [[[self alloc] initWithConnection:connection] autorelease];
 	user->_isOffline = YES;
 	user->_nick   = [nick copy];
 	user->_login  = [login copy];
+	user->_status = [status copy];
+	user->_icon   = [icon retain];
 	user->_color  = WCAccountColorBlack;
 	return user;
 }

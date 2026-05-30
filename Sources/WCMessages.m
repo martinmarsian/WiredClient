@@ -40,6 +40,7 @@
 #import "WCStats.h"
 #import "WCUser.h"
 #import "WCDatabaseController.h"
+#import "WCOfflineMessageCrypto.h"
 #import "WDWiredModel.h"
 #import "NSManagedObjectContext+Fetch.h"
 
@@ -68,6 +69,7 @@ NSString * const WCMessagesDidChangeUnreadCountNotification		= @"WCMessagesDidCh
 - (void)                    _showDialogForMessage:(WDMessage *)message;
 - (NSString *)              _stringForMessageString:(NSString *)string;
 - (void)                    _sendMessage;
+- (nullable NSData *)       _cachedPublicKeyForToken:(NSString *)token connection:(WCServerConnection *)connection;
 
 - (NSArray *)               _commands;
 - (BOOL)                    _runCommand:(NSString *)string;
@@ -275,6 +277,18 @@ NSString * const WCMessagesDidChangeUnreadCountNotification		= @"WCMessagesDidCh
 
 
 
+- (nullable NSData *)_cachedPublicKeyForToken:(NSString *)token connection:(WCServerConnection *)connection {
+    NSString *cacheKey = [NSString stringWithFormat:@"WCKnownUsersCache_%@", [connection URLIdentifier]];
+    NSArray  *list     = [[NSUserDefaults standardUserDefaults] arrayForKey:cacheKey];
+    for(NSDictionary *entry in list) {
+        if([[entry objectForKey:@"login"] isEqualToString:token])
+            return [entry objectForKey:@"pubkey"];
+    }
+    return nil;
+}
+
+
+
 - (void)_sendMessage {
 	NSString				*string;
 	WIP7Message				*p7Message;
@@ -310,11 +324,26 @@ NSString * const WCMessagesDidChangeUnreadCountNotification		= @"WCMessagesDidCh
     [self _sortConversations];
 
 	if([[conversation user] isOffline]) {
-		// Target user is offline — store on server for delivery on their next login
+		// Target user is offline — send their token as recipient address (new servers).
+		// Also populate the legacy offline_recipient field so old servers can still route
+		// the message (if the cached value happens to be a real login from an old server session).
+		NSString *plaintext   = [self _stringForMessageString:[message messageString]];
+		NSString *recipientID = [[conversation user] login];
+
+		// Attempt E2E encryption if the recipient has a cached public key
+		NSString *serverID    = [[conversation connection] URLIdentifier];
+		NSData   *pubKeyDER   = [self _cachedPublicKeyForToken:recipientID connection:[conversation connection]];
+		NSData   *ciphertext  = pubKeyDER ? [WCOfflineMessageCrypto encryptMessage:plaintext withPublicKeyDER:pubKeyDER] : nil;
+
 		p7Message = [WIP7Message messageWithName:@"wired.message.send_offline_message" spec:WCP7Spec];
-		[p7Message setString:[[conversation user] login] forName:@"wired.message.offline_recipient"];
-		[p7Message setString:[self _stringForMessageString:[message messageString]] forName:@"wired.message.message"];
+		[p7Message setString:recipientID forName:@"wired.message.offline_recipient_token"];
+		[p7Message setString:recipientID forName:@"wired.message.offline_recipient"];
+		// When encrypted, message field carries a placeholder for legacy clients
+		[p7Message setString:ciphertext ? @"[Encrypted message]" : plaintext forName:@"wired.message.message"];
+		if(ciphertext)
+			[p7Message setData:ciphertext forName:@"wired.message.offline_message_ciphertext"];
 		[[conversation connection] sendMessage:p7Message];
+		(void)serverID;
 	} else {
 		p7Message = [WIP7Message messageWithName:@"wired.message.send_message" spec:WCP7Spec];
 		[p7Message setUInt32:[[conversation user] userID] forName:@"wired.user.id"];
@@ -1103,18 +1132,30 @@ NSString * const WCMessagesDidChangeUnreadCountNotification		= @"WCMessagesDidCh
 
 - (void)linkConnectionLoggedIn:(NSNotification *)notification {
 	WCServerConnection		*connection;
-    
+
 	connection = [notification object];
-	
+
 	if(![connection isKindOfClass:[WCServerConnection class]])
 		return;
-    
+
 	[self _revalidateConversationsWithConnection:connection];
-	
+
 	[connection addObserver:self selector:@selector(wiredMessageMessage:) messageName:@"wired.message.message"];
 	[connection addObserver:self selector:@selector(wiredMessageBroadcast:) messageName:@"wired.message.broadcast"];
 	[connection addObserver:self selector:@selector(wiredMessageOfflineMessageDelivered:) messageName:@"wired.message.offline_message_delivered"];
-	
+
+    // Register our E2E public key with the server so other clients can encrypt messages for us.
+    // The message type may not exist on old servers; if messageWithName returns nil, skip silently.
+    NSString *serverID  = [connection URLIdentifier];
+    NSData   *pubKeyDER = [WCOfflineMessageCrypto publicKeyDERForServerID:serverID];
+    if(pubKeyDER) {
+        WIP7Message *keyMsg = [WIP7Message messageWithName:@"wired.message.set_offline_public_key" spec:WCP7Spec];
+        if(keyMsg) {
+            [keyMsg setData:pubKeyDER forName:@"wired.message.offline_public_key"];
+            [connection sendMessage:keyMsg];
+        }
+    }
+
 	[self _validate];
 }
 
@@ -1271,16 +1312,31 @@ NSString * const WCMessagesDidChangeUnreadCountNotification		= @"WCMessagesDidCh
     WCUser                  *senderStub;
     WDPrivateMessage        *message;
     WDConversation          *conversation, *selectedConversation;
-    NSString                *senderNick, *msgText;
+    NSString                *senderNick, *senderToken, *loginKey, *msgText;
+    NSData                  *ciphertext;
 
-    connection  = [p7Message contextInfo];
-    senderNick  = [p7Message stringForName:@"wired.message.offline_sender_nick"];
-    msgText     = [p7Message stringForName:@"wired.message.message"];
+    connection   = [p7Message contextInfo];
+    senderNick   = [p7Message stringForName:@"wired.message.offline_sender_nick"];
+    senderToken  = [p7Message stringForName:@"wired.message.offline_sender_token"];
+    ciphertext   = [p7Message dataForName:@"wired.message.offline_message_ciphertext"];
 
-    if(!senderNick || !msgText) return;
+    if(!senderNick) return;
 
-    // Create a stub user representing the offline sender (no login known, use nick as login key)
-    senderStub = [WCUser offlineUserWithNick:senderNick login:senderNick connection:connection];
+    // Attempt decryption if a ciphertext is present
+    if(ciphertext && [ciphertext length] > 0) {
+        NSString *serverID  = [connection URLIdentifier];
+        NSString *decrypted = [WCOfflineMessageCrypto decryptCiphertext:ciphertext forServerID:serverID];
+        msgText = decrypted ? decrypted : @"🔒 Encrypted message (key not available)";
+    } else {
+        msgText = [p7Message stringForName:@"wired.message.message"];
+    }
+
+    if(!msgText) return;
+
+    // Use the opaque token as the stable login key (not nick, not real login)
+    loginKey = (senderToken && [senderToken length] > 0) ? senderToken : senderNick;
+
+    senderStub = [WCUser offlineUserWithNick:senderNick login:loginKey connection:connection];
 
     conversation         = [self _messagesConversationForUser:senderStub];
     selectedConversation = [self _selectedConversation];

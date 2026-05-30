@@ -230,6 +230,7 @@
 		B1D840D42191AEF700B991C8 /* libz.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = B1D840D32191AEF700B991C8 /* libz.1.dylib */; };
 		B1D840D62191AF0300B991C8 /* libxml2.2.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = B1D840D52191AF0300B991C8 /* libxml2.2.dylib */; };
 		E631FE006AB48726F7BBB212 /* Pods_Wired_Client.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4EA4DF030F0053EC62511D55 /* Pods_Wired_Client.framework */; };
+		F6055CE22FCB4F7500EAF75F /* WCOfflineMessageCrypto.m in Sources */ = {isa = PBXBuildFile; fileRef = F6055CE12FCB4F7500EAF75F /* WCOfflineMessageCrypto.m */; };
 		F63B665C2F898D2400491C2B /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F63B665B2F898D2400491C2B /* UserNotifications.framework */; };
 /* End PBXBuildFile section */
 
@@ -697,6 +698,8 @@
 		B18D7AB72395C70A000E202E /* NSString+Emoji.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSString+Emoji.h"; sourceTree = "<group>"; };
 		B1D840D32191AEF700B991C8 /* libz.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libz.1.dylib; path = ../../../../usr/lib/libz.1.dylib; sourceTree = "<group>"; };
 		B1D840D52191AF0300B991C8 /* libxml2.2.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libxml2.2.dylib; path = ../../../../usr/lib/libxml2.2.dylib; sourceTree = "<group>"; };
+		F6055CE02FCB4F7500EAF75F /* WCOfflineMessageCrypto.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WCOfflineMessageCrypto.h; sourceTree = "<group>"; };
+		F6055CE12FCB4F7500EAF75F /* WCOfflineMessageCrypto.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = WCOfflineMessageCrypto.m; sourceTree = "<group>"; };
 		F63B665B2F898D2400491C2B /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
 		F7D369A6437514269AF02479 /* Pods-Wired Client.test.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Wired Client.test.xcconfig"; path = "Pods/Target Support Files/Pods-Wired Client/Pods-Wired Client.test.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -778,6 +781,8 @@
 		29B97315FDCFA39411CA2CEA /* Sources */ = {
 			isa = PBXGroup;
 			children = (
+				F6055CE02FCB4F7500EAF75F /* WCOfflineMessageCrypto.h */,
+				F6055CE12FCB4F7500EAF75F /* WCOfflineMessageCrypto.m */,
 				A55C73330F26800B006E8568 /* Classes */,
 				4C9B2A9F17E7A85D007B0962 /* Protocols */,
 				772F6CE90F1E1A8E00CB8001 /* Views */,
@@ -1772,6 +1777,7 @@
 				A5DC7EC8057AAEAD00736BBF /* WCApplicationController.m in Sources */,
 				A5D409770D897771007851BD /* WCBanlistController.m in Sources */,
 				77CED3A50EC068F500123164 /* WCBoard.m in Sources */,
+				F6055CE22FCB4F7500EAF75F /* WCOfflineMessageCrypto.m in Sources */,
 				B18D7AB82395C70A000E202E /* NSString+Emoji.m in Sources */,
 				77CED3A60EC068F500123164 /* WCBoardPost.m in Sources */,
 				77CED3A70EC068F500123164 /* WCBoards.m in Sources */,
@@ -2270,7 +2276,7 @@
 				CODE_SIGN_IDENTITY = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 104;
+				CURRENT_PROJECT_VERSION = 105;
 				DEVELOPMENT_TEAM = 7KTXA5Y36K;
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = VGB467J8DZ;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -2444,7 +2450,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 104;
+				CURRENT_PROJECT_VERSION = 105;
 				DEVELOPMENT_TEAM = VGB467J8DZ;
 				ENABLE_HARDENED_RUNTIME = YES;
 				FRAMEWORK_SEARCH_PATHS = (
@@ -2547,7 +2553,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CODE_SIGN_ENTITLEMENTS = "Wired Client.entitlements";
 				CODE_SIGN_IDENTITY = "-";
-				CURRENT_PROJECT_VERSION = 104;
+				CURRENT_PROJECT_VERSION = 105;
 				ENABLE_HARDENED_RUNTIME = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
