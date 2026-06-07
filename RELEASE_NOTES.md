@@ -1,5 +1,24 @@
 # Wired Client — Release Notes
 
+## Version 2.7 (Build 107)
+
+### Bug Fixes (Build 107)
+
+- **Offline user list — truncated nicks and status** — user nicks and status messages in the offline section of the user list were silently clipped at a few characters (e.g. "Professor Test Wired" appeared as "Professo", "macOS 26.6 Testing" as "macOS"). Three compounding issues were fixed:
+  - The offline table view was initialised with a zero-size frame and no autoresizing mask, so it never grew to fill the available space — the column stayed ~100 px wide regardless of panel size.
+  - Nick labels used `attributedStringValue` with a strikethrough attribute but no paragraph style. Without an explicit paragraph style, AppKit applies `NSLineBreakByWordWrapping`, which clips at the pixel boundary instead of truncating with an ellipsis. Added `NSLineBreakByTruncatingTail` via `NSParagraphStyleAttributeName`.
+  - When the user changed the icon size in Preferences, row heights and column widths were updated only for the online table; the offline table was skipped. Both tables are now updated together.
+
+---
+
+## Version 2.7 (Build 106)
+
+### Bug Fixes (Build 106)
+
+- **Stale offline user cache** — offline users with outdated nicks (e.g. from a previous server installation or renamed account) no longer appear in the offline list. After receiving the complete known-users list from the server, the local cache is pruned to only contain entries whose tokens the server confirmed in the current session.
+
+---
+
 ## Version 2.7 (Build 105)
 
 ### What's New (Build 105)
